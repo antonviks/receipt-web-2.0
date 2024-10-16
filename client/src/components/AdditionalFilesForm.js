@@ -4,13 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useCookies } from 'react-cookie';
 
 function AdditionalFilesForm({ onNext, onBack, onFilesChange }) {
-  const [cookies, setCookie, removeCookie] = useCookies(['additionalFiles']);
-  const [files, setFiles] = useState([]); // State to store File objects
-  const [fileNames, setFileNames] = useState(cookies.additionalFiles || []); // State to store file names for persistence
-  const [hasPrompted, setHasPrompted] = useState(false); // Flag to control the alert
+  const [cookies, setCookie] = useCookies(['additionalFiles']); // Removed 'removeCookie'
+  const [files, setFiles] = useState([]);
+  const [fileNames, setFileNames] = useState(cookies.additionalFiles || []);
 
   useEffect(() => {
-    // Remove the alert and related code
     if (fileNames.length > 0) {
       console.log('Existing file names detected. Resetting files and cookies.');
       setFileNames([]);

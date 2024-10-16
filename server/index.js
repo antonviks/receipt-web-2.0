@@ -13,9 +13,15 @@ const receiptRoutes = require('./routes/receipts');
 const secretKey = process.env.SECRET_KEY || 'your-secret-key';
 const mongoURI = process.env.MONGO_URI;
 
-// Debugging: Log the environment variables to ensure they're loaded
-console.log('MongoDB URI:', mongoURI);
-console.log('Secret Key:', secretKey);
+const path = require('path');
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../client/build')));
+
+// The "catchall" handler: for any request that doesn't match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+});
 
 // Connect to MongoDB without deprecated options
 mongoose.connect(mongoURI)
@@ -38,7 +44,7 @@ app.use(session({
 
 // Configure CORS to allow credentials
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
 }));
 

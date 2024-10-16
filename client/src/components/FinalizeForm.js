@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { useCookies } from 'react-cookie';
 
 function FinalizeForm({ onFinalize, onBack, onReset, additionalFiles }) {
-  const [pdfUrl, setPdfUrl] = useState(null); // To store the PDF URL for preview
-  const [loading, setLoading] = useState(false); // To manage loading states
-  const [success, setSuccess] = useState(false); // To track if email was sent successfully
-  const [cookies, setCookie, removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
 
   // Handle Preview Button Click
   const handlePreview = async () => {

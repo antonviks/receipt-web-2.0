@@ -11,12 +11,12 @@ import axios from 'axios';
 import { useCookies } from 'react-cookie';
 
 function MultiStepForm() {
-  const [step, setStep] = useState(0); // Start at 0 for password prompt
+  const [step, setStep] = useState(0);
   const [personalInfo, setPersonalInfo] = useState({});
   const [receipts, setReceipts] = useState([]);
-  const [additionalFiles, setAdditionalFiles] = useState([]); // State for additional files
+  const [additionalFiles, setAdditionalFiles] = useState([]);
   const [paymentInfo, setPaymentInfo] = useState({});
-  const [cookies, setCookie, removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
+  const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
 
   const handlePasswordSuccess = () => {
     setStep(1);
