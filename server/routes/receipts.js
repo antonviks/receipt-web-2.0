@@ -4,13 +4,41 @@ const express = require('express');
 const router = express.Router();
 const Receipt = require('../models/Receipt');
 const path = require('path');
-const upload = require('../middleware/multerConfig');
+const multer = require('multer');
 const fs = require('fs');
 const generatePDF = require('../utils/pdfGenerator');
 const sendEmail = require('../utils/emailSender');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
+// Define directories
+const uploadsDir = path.join(__dirname, '../uploads');
+const outputDir = path.join(__dirname, '../output');
+
+// Configure Multer with Disk Storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = `${Date.now()}-${uuidv4()}-${file.originalname}`;
+    cb(null, uniqueSuffix);
+  }
+});
+
+// Multer instance with limits and file filtering
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Endast JPEG, PNG eller PDF-filer är tillåtna.'));
+    }
+  }
+});
 
 // Function to clean up files (PDF and uploaded images/PDFs)
 async function cleanupFiles(pdfPath, uploadedFiles) {
@@ -37,9 +65,9 @@ async function cleanupFiles(pdfPath, uploadedFiles) {
     await Promise.all(deletePromises);
     console.log('All uploaded additional files have been deleted.');
 
-    // Ensure 'uploads' and 'output' directories are completely empty
-    await deleteAllFilesInDirectory(path.join(__dirname, '../uploads'));
-    await deleteAllFilesInDirectory(path.join(__dirname, '../output'));
+    // Optionally, ensure 'uploads' and 'output' directories are empty
+    await deleteAllFilesInDirectory(uploadsDir);
+    await deleteAllFilesInDirectory(outputDir);
     console.log('Uploads and Output directories are now empty.');
   } catch (cleanupError) {
     console.error('Error during file cleanup:', cleanupError);
@@ -66,22 +94,21 @@ async function deleteAllFilesInDirectory(directoryPath) {
 }
 
 // Unified Route for Processing (Preview and Finalization)
-router.post('/process', upload.fields([{ name: 'additionalFiles', maxCount: 20 }]), async (req, res) => {
+router.post('/process', upload.array('files'), async (req, res) => {
   try {
     const { personalInfo, paymentInfo, action } = req.body;
     let { receipts } = req.body;
 
-    // Parse receipts if it's a JSON string
+    // Parse receipts if sent as JSON string
     if (typeof receipts === 'string') {
       receipts = JSON.parse(receipts);
     }
 
-    // Validate inputs
+    // Input Validation
     if (!personalInfo.date || !personalInfo.name) {
       return res.status(400).json({ error: 'Datum och Namn krävs.' });
     }
 
-    // Validate that there's at least one receipt
     if (!receipts || !Array.isArray(receipts) || receipts.length === 0) {
       return res.status(400).json({ error: 'Minst ett kvitto krävs.' });
     }
@@ -132,8 +159,8 @@ router.post('/process', upload.fields([{ name: 'additionalFiles', maxCount: 20 }
     }
 
     // Handle additional files
-    const additionalFiles = req.files['additionalFiles'] || [];
-    
+    const additionalFiles = req.files || [];
+
     console.log(`Received ${additionalFiles.length} additional file(s):`);
     additionalFiles.forEach((file, index) => {
       console.log(`File ${index + 1}:`);
@@ -162,7 +189,7 @@ router.post('/process', upload.fields([{ name: 'additionalFiles', maxCount: 20 }
         originalName: file.originalname,
         mimeType: file.mimetype,
       })),
-      sessionID: req.session ? req.session.id : '', // Associate with session
+      sessionID: req.session ? req.session.id : '',
     });
 
     await newReceipt.save();
@@ -172,7 +199,7 @@ router.post('/process', upload.fields([{ name: 'additionalFiles', maxCount: 20 }
     // Format date for the PDF filename
     const formattedDate = formatDate(personalInfo.date);
     const pdfFilename = `Utläggsblankett_${formattedDate}_${uuidv4()}.pdf`;
-    const pdfPath = path.join(__dirname, `../output/${pdfFilename}`);
+    const pdfPath = path.join(outputDir, pdfFilename);
 
     console.log(`PDF will be saved at: ${pdfPath}`);
 
@@ -206,11 +233,11 @@ router.post('/process', upload.fields([{ name: 'additionalFiles', maxCount: 20 }
 
 module.exports = router;
 
-// Helper function to format dates (ensure it's defined)
+// Helper function to format dates in YYYY-MM-DD format
 function formatDate(date) {
   const d = new Date(date);
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+  const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }

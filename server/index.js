@@ -9,14 +9,33 @@ const MongoStore = require('connect-mongo');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const receiptRoutes = require('./routes/receipts');
+const path = require('path');
+const fs = require('fs');
 
+// Define directories
+const uploadsDir = path.join(__dirname, 'uploads');
+const outputDir = path.join(__dirname, 'output');
+
+// Function to ensure directory exists
+function ensureDirectory(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created directory: ${dir}`);
+  }
+}
+
+// Ensure necessary directories exist
+ensureDirectory(uploadsDir);
+ensureDirectory(outputDir);
+
+// MongoDB Connection
 const secretKey = process.env.SECRET_KEY || 'your-secret-key';
 const mongoURI = process.env.MONGO_URI;
 
-const path = require('path');
-
-// Connect to MongoDB
-mongoose.connect(mongoURI)
+mongoose.connect(mongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
