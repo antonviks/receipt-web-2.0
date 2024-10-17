@@ -103,7 +103,7 @@ function FinalizeForm({ onFinalize, onBack, onReset, additionalFiles }) {
             className="btn btn-primary"
             onClick={onReset}
           >
-            Gå tillbaka till början
+            Logga ut
           </button>
         </div>
       )}
