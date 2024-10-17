@@ -1,13 +1,11 @@
 // client/src/components/FinalizeForm.js
 
 import React, { useState } from 'react';
-import { useCookies } from 'react-cookie';
 
 function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
 
   // Handle Preview Button Click
   const handlePreview = async () => {
@@ -32,10 +30,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
       setSuccess(true); // Set success to true to display success message
       setLoading(false);
       // Clear all cookies after successful submission
-      removeCookie('personalInfo', { path: '/' });
-      removeCookie('receipts', { path: '/' });
-      removeCookie('additionalFiles', { path: '/' });
-      removeCookie('paymentInfo', { path: '/' });
+      onReset();
     } catch (error) {
       console.error('Error sending email:', error);
       alert('Ett fel uppstod vid generering av utläggsblankett.');

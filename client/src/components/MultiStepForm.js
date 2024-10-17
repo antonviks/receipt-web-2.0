@@ -86,6 +86,7 @@ function MultiStepForm() {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
+          withCredentials: true,
         });
 
         return response.data; // Expected to contain a success message
