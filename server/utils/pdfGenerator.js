@@ -170,28 +170,7 @@ async function generateMainPDF(receiptData, pdfPath, additionalImages) {
         .text(`Kontonummer: ${receiptData.accountNumber || '-'}`, 50, paymentY + 65)
         .text(`Annat sätt: ${receiptData.otherMethod || '-'}`, 50, paymentY + 85);
 
-      // Handle Uploaded Images
-      receiptData.receipts.forEach((receipt) => {
-        if (receipt.imagePath) {
-          if (fs.existsSync(receipt.imagePath)) {
-            doc.addPage();
-            doc.fontSize(16).text(`Kvitto Bild: ${path.basename(receipt.imagePath)}`, {
-              align: 'center',
-            });
-            doc.moveDown();
-            doc.image(receipt.imagePath, {
-              fit: [500, 600],
-              align: 'center',
-              valign: 'center',
-            });
-            console.log(`Embedded image: ${receipt.imagePath}`);
-          } else {
-            console.error(`Image path does not exist: ${receipt.imagePath}`);
-          }
-        }
-      });
-      
-      // Handle Additional Images (not tied to receipts)
+      // Handle Additional Images
       additionalImages.forEach((file, index) => {
         if (fs.existsSync(file.path)) {
           doc.addPage();
