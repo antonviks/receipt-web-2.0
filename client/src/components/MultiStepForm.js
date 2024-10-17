@@ -41,39 +41,23 @@ function MultiStepForm() {
     setStep(5);
   };
 
+  // Unified Finalize Handler
   const handleFinalize = async (action) => {
     try {
       // Create FormData
       const formData = new FormData();
 
       // Append personalInfo
-      formData.append('personalInfo[date]', personalInfo.date);
-      formData.append('personalInfo[name]', personalInfo.name);
-
-      // Append paymentInfo
-      formData.append('paymentInfo[bankName]', paymentInfo.bankName);
-      formData.append('paymentInfo[clearingNumber]', paymentInfo.clearingNumber);
-      formData.append('paymentInfo[accountNumber]', paymentInfo.accountNumber);
-      formData.append('paymentInfo[otherMethod]', paymentInfo.otherMethod);
-
-      // Append receipts
-      receipts.forEach((receipt, index) => {
-        formData.append(`receipts[${index}][date]`, receipt.date);
-        formData.append(`receipts[${index}][purpose]`, receipt.purpose);
-        formData.append(`receipts[${index}][costCenter]`, receipt.costCenter);
-        if (receipt.costCenter === 'Annat') {
-          formData.append(`receipts[${index}][customCostCenter]`, receipt.customCostCenter);
-        }
-        formData.append(`receipts[${index}][comment]`, receipt.comment);
-        formData.append(`receipts[${index}][totalCost]`, receipt.totalCost);
-        formData.append(`receipts[${index}][vat]`, receipt.vat);
-      });
+      formData.append('personalInfo', JSON.stringify(personalInfo));
+      formData.append('paymentInfo', JSON.stringify(paymentInfo));
+      formData.append('receipts', JSON.stringify(receipts));
 
       // Append additional files (images or PDFs)
       additionalFiles.forEach((file) => {
-        formData.append('additionalFiles', file); // 'additionalFiles' is the field name
+        formData.append('files', file); // 'files' is the field name expected by the server
       });
 
+      // Append action
       formData.append('action', action);
 
       // Log FormData entries for debugging
@@ -86,25 +70,25 @@ function MultiStepForm() {
       }
 
       if (action === 'preview') {
-        const response = await axios.post('http://localhost:5001/api/receipts/process', formData, {
+        const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          responseType: 'blob',
+          responseType: 'blob', // Important for handling PDF
         });
 
+        // Create a URL for the PDF Blob
         const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
         const pdfUrl = URL.createObjectURL(pdfBlob);
         return pdfUrl;
       } else if (action === 'finalize') {
-        const response = await axios.post('http://localhost:5001/api/receipts/process', formData, {
+        const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          withCredentials: true,
         });
 
-        return response.data;
+        return response.data; // Expected to contain a success message
       }
     } catch (error) {
       console.error(`Error during ${action}:`, error);
@@ -145,6 +129,8 @@ function MultiStepForm() {
       )}
       {step === 2 && (
         <ReceiptDetailsForm
+          receipts={receipts}
+          setReceipts={setReceipts}
           onNext={handleReceiptsNext}
           onBack={handleBack}
         />
@@ -158,6 +144,8 @@ function MultiStepForm() {
       )}
       {step === 4 && (
         <PaymentInfoForm
+          paymentInfo={paymentInfo}
+          setPaymentInfo={setPaymentInfo}
           onNext={handlePaymentInfoNext}
           onBack={handleBack}
         />

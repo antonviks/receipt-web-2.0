@@ -99,13 +99,39 @@ router.post('/process', upload.array('files'), async (req, res) => {
     const { personalInfo, paymentInfo, action } = req.body;
     let { receipts } = req.body;
 
-    // Parse receipts if sent as JSON string
+    // Parse receipts if it's a JSON string
     if (typeof receipts === 'string') {
-      receipts = JSON.parse(receipts);
+      try {
+        receipts = JSON.parse(receipts);
+      } catch (parseError) {
+        return res.status(400).json({ error: 'Receipts must be a valid JSON string.' });
+      }
     }
 
     // Input Validation
-    if (!personalInfo.date || !personalInfo.name) {
+    if (!personalInfo || typeof personalInfo !== 'string') {
+      return res.status(400).json({ error: 'Personal information is required and must be a JSON string.' });
+    }
+
+    if (!paymentInfo || typeof paymentInfo !== 'string') {
+      return res.status(400).json({ error: 'Payment information is required and must be a JSON string.' });
+    }
+
+    if (!action || (action !== 'preview' && action !== 'finalize')) {
+      return res.status(400).json({ error: 'Invalid action specified.' });
+    }
+
+    // Further parse personalInfo and paymentInfo
+    let parsedPersonalInfo, parsedPaymentInfo;
+    try {
+      parsedPersonalInfo = JSON.parse(personalInfo);
+      parsedPaymentInfo = JSON.parse(paymentInfo);
+    } catch (parseError) {
+      return res.status(400).json({ error: 'PersonalInfo and PaymentInfo must be valid JSON strings.' });
+    }
+
+    // Enhanced Data Validation
+    if (!parsedPersonalInfo.date || !parsedPersonalInfo.name) {
       return res.status(400).json({ error: 'Datum och Namn krävs.' });
     }
 
@@ -113,7 +139,6 @@ router.post('/process', upload.array('files'), async (req, res) => {
       return res.status(400).json({ error: 'Minst ett kvitto krävs.' });
     }
 
-    // Enhanced Data Validation
     for (let i = 0; i < receipts.length; i++) {
       const receipt = receipts[i];
       if (!receipt.date) {
@@ -171,8 +196,8 @@ router.post('/process', upload.array('files'), async (req, res) => {
 
     // Create new Receipt document
     const newReceipt = new Receipt({
-      date: personalInfo.date,
-      name: personalInfo.name,
+      date: parsedPersonalInfo.date,
+      name: parsedPersonalInfo.name,
       receipts: receipts.map((receipt) => ({
         ...receipt,
         totalCost: parseFloat(receipt.totalCost) || 0,
@@ -180,16 +205,16 @@ router.post('/process', upload.array('files'), async (req, res) => {
       })),
       totalAmount,
       totalVAT,
-      bankName: paymentInfo.bankName,
-      clearingNumber: paymentInfo.clearingNumber,
-      accountNumber: paymentInfo.accountNumber,
-      otherMethod: paymentInfo.otherMethod,
+      bankName: parsedPaymentInfo.bankName,
+      clearingNumber: parsedPaymentInfo.clearingNumber,
+      accountNumber: parsedPaymentInfo.accountNumber,
+      otherMethod: parsedPaymentInfo.otherMethod,
       additionalFiles: additionalFiles.map(file => ({
         path: file.path,
         originalName: file.originalname,
         mimeType: file.mimetype,
       })),
-      sessionID: req.session ? req.session.id : '',
+      sessionID: req.session ? req.session.id : '', // Associate with session
     });
 
     await newReceipt.save();
@@ -197,7 +222,7 @@ router.post('/process', upload.array('files'), async (req, res) => {
     console.log('Additional Files:', newReceipt.additionalFiles);
 
     // Format date for the PDF filename
-    const formattedDate = formatDate(personalInfo.date);
+    const formattedDate = formatDate(parsedPersonalInfo.date);
     const pdfFilename = `Utläggsblankett_${formattedDate}_${uuidv4()}.pdf`;
     const pdfPath = path.join(outputDir, pdfFilename);
 
@@ -237,7 +262,7 @@ module.exports = router;
 function formatDate(date) {
   const d = new Date(date);
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }

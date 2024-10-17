@@ -2,6 +2,7 @@
 
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
+const fs = require('fs');
 require('dotenv').config();
 
 const {
@@ -25,6 +26,11 @@ oauth2Client.setCredentials({
 
 async function sendEmail(recipientName, pdfPath, pdfFilename) {
   try {
+    // Verify PDF file exists
+    if (!fs.existsSync(pdfPath)) {
+      throw new Error(`PDF file not found at path: ${pdfPath}`);
+    }
+
     // Get Access Token
     const accessTokenResponse = await oauth2Client.getAccessToken();
     const accessToken = accessTokenResponse?.token;
@@ -46,6 +52,7 @@ async function sendEmail(recipientName, pdfPath, pdfFilename) {
       },
     });
 
+    // Define Mail Options
     const mailOptions = {
       from: EMAIL_USER,
       to: EMAIL_USER,
@@ -56,10 +63,12 @@ async function sendEmail(recipientName, pdfPath, pdfFilename) {
         {
           filename: pdfFilename,
           path: pdfPath,
+          contentType: 'application/pdf',
         },
       ],
     };
 
+    // Send Email
     const result = await transporter.sendMail(mailOptions);
     console.log('Email sent:', result.response);
   } catch (error) {
