@@ -11,6 +11,7 @@ const sendEmail = require('../utils/emailSender');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
+
 // Function to clean up files (PDF and uploaded images/PDFs)
 async function cleanupFiles(pdfPath, uploadedFiles) {
   try {

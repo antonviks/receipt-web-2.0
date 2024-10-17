@@ -15,15 +15,7 @@ const mongoURI = process.env.MONGO_URI;
 
 const path = require('path');
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../client/build')));
-
-// The "catchall" handler: for any request that doesn't match one above, send back React's index.html file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
-});
-
-// Connect to MongoDB without deprecated options
+// Connect to MongoDB
 mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
@@ -50,8 +42,16 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
-// Routes
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../client/build')));
+
+// API Routes
 app.use('/api/receipts', receiptRoutes);
+
+// The "catchall" handler: for any request that doesn't match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+});
 
 const PORT = process.env.PORT || 5001;
 
