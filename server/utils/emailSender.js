@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const {
   EMAIL_USER,
+  EMAIL_RECIPIENT,
   EMAIL_COPY,
   OAUTH_CLIENT_ID,
   OAUTH_CLIENT_SECRET,
@@ -55,7 +56,7 @@ async function sendEmail(recipientName, pdfPath, pdfFilename) {
     // Define Mail Options
     const mailOptions = {
       from: EMAIL_USER,
-      to: EMAIL_USER,
+      to: EMAIL_RECIPIENT,
       cc: EMAIL_COPY,
       subject: 'Kvittounderlag',
       text: `Hej,\n\nHär kommer bifogade kvitton för ${recipientName}.\n\nMvh,\nAnton`,

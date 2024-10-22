@@ -86,7 +86,6 @@ function MultiStepForm() {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          withCredentials: true,
         });
 
         return response.data; // Expected to contain a success message
@@ -156,7 +155,6 @@ function MultiStepForm() {
           onFinalize={handleFinalize}
           onBack={handleBack}
           onReset={handleReset}  // Pass handleReset to FinalizeForm
-          additionalFiles={additionalFiles} // Pass additionalFiles as prop
         />
       )}
     </div>
