@@ -32,10 +32,7 @@ ensureDirectory(outputDir);
 const secretKey = process.env.SECRET_KEY || 'your-secret-key';
 const mongoURI = process.env.MONGO_URI;
 
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
@@ -53,7 +50,6 @@ app.use(session({
   },
 }));
 
-// Configure CORS to allow credentials
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
@@ -67,10 +63,13 @@ app.use(express.static(path.join(__dirname, '../client/build')));
 // API Routes
 app.use('/api/receipts', receiptRoutes);
 
-// The "catchall" handler: for any request that doesn't match one above, send back React's index.html file.
+// Remove or comment out the catchall handler if frontend is deployed separately
+// If you intend to serve the frontend from the backend, ensure 'client/build' exists
+/*
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/build/index.html'));
 });
+*/
 
 const PORT = process.env.PORT || 5001;
 

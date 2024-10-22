@@ -1,46 +1,18 @@
 // client/src/components/FinalizeForm.js
 
 import React, { useState } from 'react';
-import { useCookies } from 'react-cookie';
-import axios from 'axios';
 
-function FinalizeForm({ onFinalize, onBack, onReset, additionalFiles }) {
+function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
 
   // Handle Preview Button Click
   const handlePreview = async () => {
     try {
       setLoading(true);
-      const formData = new FormData();
-      
-      // Append personalInfo, paymentInfo, receipts as JSON strings
-      formData.append('personalInfo', JSON.stringify(onFinalize.personalInfo));
-      formData.append('paymentInfo', JSON.stringify(onFinalize.paymentInfo));
-      formData.append('receipts', JSON.stringify(onFinalize.receipts));
-      
-      // Append additional files
-      additionalFiles.forEach((file) => {
-        formData.append('files', file);
-      });
-      
-      // Append action
-      formData.append('action', 'preview');
-
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        responseType: 'blob', // Important for handling PDF
-        withCredentials: true, // If using cookies
-      });
-
-      // Create a URL for the PDF Blob
-      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      setPdfUrl(pdfUrl);
+      const url = await onFinalize('preview'); // Call parent handler with 'preview' action
+      setPdfUrl(url); // Set the PDF URL for the iframe
       setLoading(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -53,37 +25,12 @@ function FinalizeForm({ onFinalize, onBack, onReset, additionalFiles }) {
   const handleConfirm = async () => {
     try {
       setLoading(true);
-      const formData = new FormData();
-      
-      // Append personalInfo, paymentInfo, receipts as JSON strings
-      formData.append('personalInfo', JSON.stringify(onFinalize.personalInfo));
-      formData.append('paymentInfo', JSON.stringify(onFinalize.paymentInfo));
-      formData.append('receipts', JSON.stringify(onFinalize.receipts));
-      
-      // Append additional files
-      additionalFiles.forEach((file) => {
-        formData.append('files', file);
-      });
-      
-      // Append action
-      formData.append('action', 'finalize');
-
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        withCredentials: true,
-      });
-
-      console.log('Email sent successfully:', response.data);
-      setSuccess(true);
+      await onFinalize('finalize'); // Call parent handler with 'finalize' action
+      console.log('Email sent successfully.');
+      setSuccess(true); // Set success to true to display success message
       setLoading(false);
-      
       // Clear all cookies after successful submission
-      removeCookie('personalInfo', { path: '/' });
-      removeCookie('receipts', { path: '/' });
-      removeCookie('additionalFiles', { path: '/' });
-      removeCookie('paymentInfo', { path: '/' });
+      onReset();
     } catch (error) {
       console.error('Error sending email:', error);
       alert('Ett fel uppstod vid generering av utläggsblankett.');
