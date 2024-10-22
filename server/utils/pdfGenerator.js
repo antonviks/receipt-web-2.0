@@ -104,6 +104,26 @@ async function generatePDF(receiptData, pdfPath) {
         .text(`Kontonummer: ${receiptData.accountNumber || '-'}`, 50, paymentY + 65)
         .text(`Annat sätt: ${receiptData.otherMethod || '-'}`, 50, paymentY + 85);
 
+      // Footer Section
+      const footerY = doc.page.height - doc.page.margins.bottom - 60;
+      
+      // Draw Divider Above Footer
+      const dividerY = footerY - 10;
+      doc
+        .moveTo(50, dividerY)
+        .lineTo(550, dividerY)
+        .lineWidth(1)
+        .strokeColor('black')
+        .stroke();
+
+      // Draw the footer text below the divider
+      doc
+        .fontSize(8)
+        .text('Korskyrkan Stockholm, Birger Jarlsgatan 66, 114 29 Stockholm', 50, footerY)
+        .text('Tel: 08-411 50 04 | Org.nr: 802001-0636', 50, footerY + 15)
+        .text('www.korskyrkanstockholm.se | info@korskyrkanstockholm.se', 50, footerY + 30)
+        .text('Bankgiro: 829-6196 | Swish: 123 589 78 30', 50, footerY + 45);
+
       // Handle Additional Images
       receiptData.additionalFiles.forEach((file, index) => {
         if (file.mimeType.startsWith('image/')) {

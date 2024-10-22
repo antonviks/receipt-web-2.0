@@ -155,7 +155,6 @@ function MultiStepForm() {
           onFinalize={handleFinalize}
           onBack={handleBack}
           onReset={handleReset}  // Pass handleReset to FinalizeForm
-          additionalFiles={additionalFiles} // Pass additionalFiles as prop
         />
       )}
     </div>
