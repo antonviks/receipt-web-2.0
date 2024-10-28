@@ -63,7 +63,7 @@ function AdditionalFilesForm({ onNext, onBack, onFilesChange }) {
             type="file"
             id="additionalFiles"
             multiple
-            accept="image/*,application/pdf"
+            accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
             onChange={handleFileUpload}
             className="form-control"
           />

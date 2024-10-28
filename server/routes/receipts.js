@@ -29,13 +29,19 @@ const storage = multer.diskStorage({
 // Multer instance with limits and file filtering
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 5 MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/heic',
+      'image/heif',
+      'application/pdf'
+    ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Endast JPEG, PNG eller PDF-filer är tillåtna.'));
+      cb(new Error('Endast JPEG, PNG, HEIC, HEIF eller PDF-filer är tillåtna.'));
     }
   }
 });

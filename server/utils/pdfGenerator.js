@@ -3,9 +3,10 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp'); // Import sharp for image conversion
 
 async function generatePDF(receiptData, pdfPath) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       console.log('Starting PDF generation...');
       const doc = new PDFDocument({ margin: 50 });
@@ -125,22 +126,49 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Bankgiro: 829-6196 | Swish: 123 589 78 30', 50, footerY + 45);
 
       // Handle Additional Images
-      receiptData.additionalFiles.forEach((file, index) => {
+      for (const file of receiptData.additionalFiles) {
         if (file.mimeType.startsWith('image/')) {
-          const imagePath = path.join(__dirname, '../uploads', path.basename(file.path));
-          if (fs.existsSync(imagePath)) {
+          let imagePath = path.join(__dirname, '../uploads', path.basename(file.path));
+          let convertedImagePath = imagePath;
+
+          // Check if the image is HEIC or HEIF
+          if (file.mimeType === 'image/heic' || file.mimeType === 'image/heif') {
+            // Convert HEIC to PNG
+            try {
+              convertedImagePath = path.join(__dirname, '../uploads', `${uuidv4()}-${path.basename(file.path, path.extname(file.path))}.png`);
+              await sharp(imagePath)
+                .png()
+                .toFile(convertedImagePath);
+              console.log(`Converted HEIC to PNG: ${convertedImagePath}`);
+            } catch (conversionError) {
+              console.error(`Error converting HEIC image ${imagePath}:`, conversionError);
+              continue; // Skip embedding this image
+            }
+          }
+
+          if (fs.existsSync(convertedImagePath)) {
             doc.addPage();
-            doc.image(imagePath, {
+            doc.image(convertedImagePath, {
               fit: [500, 600],
               align: 'center',
               valign: 'center',
             });
-            console.log(`Embedded additional image: ${imagePath}`);
+            console.log(`Embedded additional image: ${convertedImagePath}`);
+
+            // Optionally, delete the converted image after embedding
+            if (convertedImagePath !== imagePath) {
+              try {
+                await fs.promises.unlink(convertedImagePath);
+                console.log(`Deleted converted image: ${convertedImagePath}`);
+              } catch (deleteError) {
+                console.error(`Error deleting converted image ${convertedImagePath}:`, deleteError);
+              }
+            }
           } else {
-            console.error(`Additional image path does not exist: ${imagePath}`);
+            console.error(`Image path does not exist: ${convertedImagePath}`);
           }
         }
-      });
+      }
 
       doc.end();
 
