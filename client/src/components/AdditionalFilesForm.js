@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCookies } from 'react-cookie';
+import heic2any from 'heic2any';
 
 function AdditionalFilesForm({ onNext, onBack, onFilesChange }) {
-  const [cookies, setCookie] = useCookies(['additionalFiles']); // Removed 'removeCookie'
+  const [cookies, setCookie] = useCookies(['additionalFiles']);
   const [files, setFiles] = useState([]);
   const [fileNames, setFileNames] = useState(cookies.additionalFiles || []);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (fileNames.length > 0) {
@@ -16,18 +18,48 @@ function AdditionalFilesForm({ onNext, onBack, onFilesChange }) {
       setCookie('additionalFiles', [], { path: '/' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const uploadedFiles = Array.from(e.target.files);
+    const processedFiles = [];
+
+    setProcessing(true);
+
+    for (const file of uploadedFiles) {
+      if (file.type === 'image/heic' || file.type === 'image/heif') {
+        try {
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: 'image/png',
+            quality: 0.8, // Adjust quality as needed
+          });
+          const convertedFile = new File([convertedBlob], `${file.name}.png`, {
+            type: 'image/png',
+          });
+          processedFiles.push(convertedFile);
+          console.log(`Converted HEIC file: ${file.name}`);
+        } catch (conversionError) {
+          console.error(`Error converting HEIC file ${file.name}:`, conversionError);
+          alert(`Kunde inte konvertera filen ${file.name}. Vänligen använd JPEG eller PNG.`);
+        }
+      } else {
+        processedFiles.push(file);
+      }
+    }
+
     // Append new files to existing files
-    const newFiles = [...files, ...uploadedFiles];
+    const newFiles = [...files, ...processedFiles];
     setFiles(newFiles);
     onFilesChange(newFiles);
+
     // Update file names in cookies
-    const newFileNames = [...fileNames, ...uploadedFiles.map(file => file.name)];
+    const newFileNames = [...fileNames, ...processedFiles.map(file => file.name)];
     setFileNames(newFileNames);
     setCookie('additionalFiles', newFileNames, { path: '/' });
+
+    setProcessing(false);
+
     // Clear the input to allow selecting the same file again if needed
     e.target.value = null;
   };
@@ -66,7 +98,9 @@ function AdditionalFilesForm({ onNext, onBack, onFilesChange }) {
             accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
             onChange={handleFileUpload}
             className="form-control"
+            disabled={processing}
           />
+          {processing && <p className="mt-2">Konverterar HEIC-filer...</p>}
         </div>
 
         {/* Display Uploaded Files */}
@@ -100,7 +134,7 @@ function AdditionalFilesForm({ onNext, onBack, onFilesChange }) {
               Tillbaka
             </button>
           )}
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={processing}>
             Nästa
           </button>
         </div>

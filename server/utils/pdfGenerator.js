@@ -3,7 +3,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const sharp = require('sharp'); // Import sharp for image conversion
+const { v4: uuidv4 } = require('uuid'); // Ensure uuidv4 is imported
 
 async function generatePDF(receiptData, pdfPath) {
   return new Promise(async (resolve, reject) => {
@@ -129,43 +129,17 @@ async function generatePDF(receiptData, pdfPath) {
       for (const file of receiptData.additionalFiles) {
         if (file.mimeType.startsWith('image/')) {
           let imagePath = path.join(__dirname, '../uploads', path.basename(file.path));
-          let convertedImagePath = imagePath;
 
-          // Check if the image is HEIC or HEIF
-          if (file.mimeType === 'image/heic' || file.mimeType === 'image/heif') {
-            // Convert HEIC to PNG
-            try {
-              convertedImagePath = path.join(__dirname, '../uploads', `${uuidv4()}-${path.basename(file.path, path.extname(file.path))}.png`);
-              await sharp(imagePath)
-                .png()
-                .toFile(convertedImagePath);
-              console.log(`Converted HEIC to PNG: ${convertedImagePath}`);
-            } catch (conversionError) {
-              console.error(`Error converting HEIC image ${imagePath}:`, conversionError);
-              continue; // Skip embedding this image
-            }
-          }
-
-          if (fs.existsSync(convertedImagePath)) {
+          if (fs.existsSync(imagePath)) {
             doc.addPage();
-            doc.image(convertedImagePath, {
+            doc.image(imagePath, {
               fit: [500, 600],
               align: 'center',
               valign: 'center',
             });
-            console.log(`Embedded additional image: ${convertedImagePath}`);
-
-            // Optionally, delete the converted image after embedding
-            if (convertedImagePath !== imagePath) {
-              try {
-                await fs.promises.unlink(convertedImagePath);
-                console.log(`Deleted converted image: ${convertedImagePath}`);
-              } catch (deleteError) {
-                console.error(`Error deleting converted image ${convertedImagePath}:`, deleteError);
-              }
-            }
+            console.log(`Embedded additional image: ${imagePath}`);
           } else {
-            console.error(`Image path does not exist: ${convertedImagePath}`);
+            console.error(`Image path does not exist: ${imagePath}`);
           }
         }
       }
@@ -182,6 +156,7 @@ async function generatePDF(receiptData, pdfPath) {
         reject(err);
       });
     } catch (error) {
+      console.error('Error during PDF generation:', error);
       reject(error);
     }
   });
