@@ -41,15 +41,15 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setReceipts(updatedReceipts);
   };
 
-  const handleFileChange = (index, file) => {
-    const updatedReceipts = receipts.map((receipt, i) => {
-      if (i === index) {
-        return { ...receipt, file };
-      }
-      return receipt;
-    });
-    setReceipts(updatedReceipts);
-  };
+//  const handleFileChange = (index, file) => {
+//    const updatedReceipts = receipts.map((receipt, i) => {
+//      if (i === index) {
+//        return { ...receipt, file };
+//      }
+//      return receipt;
+//    });
+//    setReceipts(updatedReceipts);
+//  };
 
   const handleSubmit = (e) => {
     e.preventDefault();

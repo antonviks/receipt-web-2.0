@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import PasswordPrompt from './PasswordPrompt';
 import PersonalInfoForm from './PersonalInfoForm';
 import ReceiptDetailsForm from './ReceiptDetailsForm';
-import AdditionalFilesForm from './AdditionalFilesForm';
+// import AdditionalFilesForm from './AdditionalFilesForm';
 import PaymentInfoForm from './PaymentInfoForm';
 import FinalizeForm from './FinalizeForm';
 import axios from 'axios';
