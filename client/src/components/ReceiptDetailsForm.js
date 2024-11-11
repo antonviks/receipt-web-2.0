@@ -1,37 +1,29 @@
 // client/src/components/ReceiptDetailsForm.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useCookies } from 'react-cookie';
 
-function ReceiptDetailsForm({ onNext, onBack }) {
+function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['receipts']);
-  const [receipts, setReceipts] = useState(cookies.receipts || [
-    { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', vat: '', imagePath: '' },
-  ]);
 
   useEffect(() => {
     // Load receipts from cookies if available
-    if (cookies.receipts) {
+    if (cookies.receipts && Array.isArray(cookies.receipts)) {
       setReceipts(cookies.receipts);
     }
-  }, [cookies.receipts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleChange = (index, field, value) => {
-    const updatedReceipts = [...receipts];
-    updatedReceipts[index][field] = value;
-
-    // If costCenter is not 'Annat', clear customCostCenter
-    if (field === 'costCenter' && value !== 'Annat') {
-      updatedReceipts[index].customCostCenter = '';
-    }
-
-    setReceipts(updatedReceipts);
-  };
+  useEffect(() => {
+    // Update cookies whenever receipts change
+    setCookie('receipts', receipts, { path: '/' });
+  }, [receipts, setCookie]);
 
   const handleAddReceipt = () => {
-    const newReceipt = { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', vat: '', imagePath: '' };
-    const updatedReceipts = [...receipts, newReceipt];
-    setReceipts(updatedReceipts);
+    setReceipts([
+      ...receipts,
+      { purpose: '', costCenter: '', customCostCenter: '', comment: '', file: null },
+    ]);
   };
 
   const handleRemoveReceipt = (index) => {
@@ -39,9 +31,23 @@ function ReceiptDetailsForm({ onNext, onBack }) {
     setReceipts(updatedReceipts);
   };
 
-  const handleCustomCostCenterChange = (index, value) => {
-    const updatedReceipts = [...receipts];
-    updatedReceipts[index].customCostCenter = value;
+  const handleChange = (index, field, value) => {
+    const updatedReceipts = receipts.map((receipt, i) => {
+      if (i === index) {
+        return { ...receipt, [field]: value };
+      }
+      return receipt;
+    });
+    setReceipts(updatedReceipts);
+  };
+
+  const handleFileChange = (index, file) => {
+    const updatedReceipts = receipts.map((receipt, i) => {
+      if (i === index) {
+        return { ...receipt, file };
+      }
+      return receipt;
+    });
     setReceipts(updatedReceipts);
   };
 
@@ -69,13 +75,13 @@ function ReceiptDetailsForm({ onNext, onBack }) {
   };
 
   return (
-    <div className="custom-container mt-5">
-      <h2 className="text-center mb-4">Kvitto Detaljer</h2>
+    <div className="container mt-5">
+      <h2 className="text-center mb-4">Kvittoredovisning</h2>
       <form onSubmit={handleSubmit}>
         {receipts.map((receipt, index) => (
           <div key={index} className="card mb-3">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <span>Kvitto {index + 1}</span>
+              <span>Redovisning {index + 1}</span>
               {receipts.length > 1 && (
                 <button
                   type="button"
@@ -88,28 +94,19 @@ function ReceiptDetailsForm({ onNext, onBack }) {
             </div>
             <div className="card-body">
               <div className="mb-3">
-                <label className="form-label">Datum:</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={receipt.date}
-                  onChange={(e) => handleChange(index, 'date', e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Ändamål</label>
+                <label htmlFor={`purpose-${index}`} className="form-label">Ändamål</label>
                 <input
                   type="text"
+                  id={`purpose-${index}`}
                   className="form-control"
                   value={receipt.purpose}
                   onChange={(e) => handleChange(index, 'purpose', e.target.value)}
-                  placeholder="Ange ändamål"
                   required
                 />
               </div>
+
               <div className="mb-3">
-                <label className="form-label">Kostnadsställe</label>
+                <label htmlFor={`costCenter-${index}`} className="form-label">Kostnadsställe</label>
                 <select
                   className="form-select"
                   value={receipt.costCenter}

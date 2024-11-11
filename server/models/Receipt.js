@@ -17,16 +17,7 @@ const receiptSchema = new mongoose.Schema({
       comment: { type: String },
       totalCost: { type: Number, required: true },
       vat: { type: Number, required: true },
-      imagePath: { type: String }, // Path to the uploaded image
-    },
-  ],
-
-  // Additional Files
-  additionalFiles: [
-    {
-      path: { type: String, required: true },
-      originalName: { type: String, required: true },
-      mimeType: { type: String, required: true },
+      imagePath: { type: String }, // Path to the uploaded image or file
     },
   ],
 

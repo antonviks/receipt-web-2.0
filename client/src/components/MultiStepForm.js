@@ -14,9 +14,8 @@ function MultiStepForm() {
   const [step, setStep] = useState(0);
   const [personalInfo, setPersonalInfo] = useState({});
   const [receipts, setReceipts] = useState([]);
-  const [additionalFiles, setAdditionalFiles] = useState([]);
   const [paymentInfo, setPaymentInfo] = useState({});
-  const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'additionalFiles', 'paymentInfo']);
+  const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'paymentInfo']);
 
   const handlePasswordSuccess = () => {
     setStep(1);
@@ -27,18 +26,13 @@ function MultiStepForm() {
     setStep(2);
   };
 
-  const handleReceiptsNext = (data) => {
-    setReceipts(data);
+  const handleReceiptsNext = () => {
     setStep(3);
-  };
-
-  const handleAdditionalFilesNext = () => {
-    setStep(4);
   };
 
   const handlePaymentInfoNext = (data) => {
     setPaymentInfo(data);
-    setStep(5);
+    setStep(4);
   };
 
   // Unified Finalize Handler
@@ -52,9 +46,11 @@ function MultiStepForm() {
       formData.append('paymentInfo', JSON.stringify(paymentInfo));
       formData.append('receipts', JSON.stringify(receipts));
 
-      // Append additional files (images or PDFs)
-      additionalFiles.forEach((file) => {
-        formData.append('files', file); // 'files' is the field name expected by the server
+      // Append additional files (images or PDFs) from receipts
+      receipts.forEach((receipt, index) => {
+        if (receipt.file) {
+          formData.append('files', receipt.file); // 'files' is the field name expected by the server
+        }
       });
 
       // Append action
@@ -96,11 +92,6 @@ function MultiStepForm() {
     }
   };
 
-  // Handler to set additional files from AdditionalFilesForm
-  const handleAdditionalFilesChange = (files) => {
-    setAdditionalFiles(files);
-  };
-
   const handleBack = () => {
     setStep((prevStep) => prevStep - 1);
   };
@@ -109,12 +100,10 @@ function MultiStepForm() {
     setStep(0); // Reset to the first step (PasswordPrompt)
     setPersonalInfo({});
     setReceipts([]);
-    setAdditionalFiles([]);
     setPaymentInfo({});
     // Clear all cookies
     removeCookie('personalInfo', { path: '/' });
     removeCookie('receipts', { path: '/' });
-    removeCookie('additionalFiles', { path: '/' });
     removeCookie('paymentInfo', { path: '/' });
   };
 
@@ -136,13 +125,6 @@ function MultiStepForm() {
         />
       )}
       {step === 3 && (
-        <AdditionalFilesForm
-          onNext={handleAdditionalFilesNext}
-          onBack={handleBack}
-          onFilesChange={handleAdditionalFilesChange}
-        />
-      )}
-      {step === 4 && (
         <PaymentInfoForm
           paymentInfo={paymentInfo}
           setPaymentInfo={setPaymentInfo}
@@ -150,11 +132,11 @@ function MultiStepForm() {
           onBack={handleBack}
         />
       )}
-      {step === 5 && (
+      {step === 4 && (
         <FinalizeForm
           onFinalize={handleFinalize}
           onBack={handleBack}
-          onReset={handleReset}  // Pass handleReset to FinalizeForm
+          onReset={handleReset} // Pass handleReset to FinalizeForm
         />
       )}
     </div>

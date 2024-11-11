@@ -15,6 +15,17 @@ require('dotenv').config();
 const uploadsDir = path.join(__dirname, '../uploads');
 const outputDir = path.join(__dirname, '../output');
 
+// Ensure directories exist
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log(`Created uploads directory at ${uploadsDir}`);
+}
+
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+  console.log(`Created output directory at ${outputDir}`);
+}
+
 // Configure Multer with Disk Storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -57,7 +68,7 @@ async function cleanupFiles(pdfPath, uploadedFiles) {
       console.warn(`Generated PDF not found: ${pdfPath}`);
     }
 
-    // Delete each uploaded file (additionalFiles)
+    // Delete each uploaded file (files associated with receipts)
     const deletePromises = uploadedFiles.map(async (file) => {
       const filePath = file.path;
       if (fs.existsSync(filePath)) {
@@ -69,7 +80,7 @@ async function cleanupFiles(pdfPath, uploadedFiles) {
     });
 
     await Promise.all(deletePromises);
-    console.log('All uploaded additional files have been deleted.');
+    console.log('All uploaded files have been deleted.');
 
     // Optionally, ensure 'uploads' and 'output' directories are empty
     await deleteAllFilesInDirectory(uploadsDir);
@@ -102,13 +113,13 @@ async function deleteAllFilesInDirectory(directoryPath) {
 // Unified Route for Processing (Preview and Finalization)
 router.post('/process', upload.array('files'), async (req, res) => {
   try {
-    const { personalInfo, paymentInfo, action } = req.body;
-    let { receipts } = req.body;
+    const { personalInfo, paymentInfo, action, receipts: receiptsJSON } = req.body;
+    let receipts = [];
 
     // Parse receipts if it's a JSON string
-    if (typeof receipts === 'string') {
+    if (typeof receiptsJSON === 'string') {
       try {
-        receipts = JSON.parse(receipts);
+        receipts = JSON.parse(receiptsJSON);
       } catch (parseError) {
         return res.status(400).json({ error: 'Receipts must be a valid JSON string.' });
       }
@@ -142,30 +153,34 @@ router.post('/process', upload.array('files'), async (req, res) => {
     }
 
     if (!receipts || !Array.isArray(receipts) || receipts.length === 0) {
-      return res.status(400).json({ error: 'Minst ett kvitto krävs.' });
+      return res.status(400).json({ error: 'Minst en redovisning krävs.' });
     }
 
     for (let i = 0; i < receipts.length; i++) {
       const receipt = receipts[i];
       if (!receipt.date) {
-        return res.status(400).json({ error: `Datum krävs för kvitto ${i + 1}.` });
+        return res.status(400).json({ error: `Datum krävs för redovisning ${i + 1}.` });
+      }
+      if (!receipt.purpose) {
+        return res.status(400).json({ error: `Ändamål krävs för redovisning ${i + 1}.` });
+      }
+      if (!receipt.costCenter) {
+        return res.status(400).json({ error: `Kostnadsställe krävs för redovisning ${i + 1}.` });
+      }
+      if (receipt.costCenter === 'Annat' && !receipt.customCostCenter) {
+        return res.status(400).json({ error: `Ange kostnadsställe för "Annat" alternativet för redovisning ${i + 1}.` });
       }
       if (!receipt.totalCost || isNaN(parseFloat(receipt.totalCost))) {
-        return res.status(400).json({ error: `Totalkostnad krävs och måste vara ett nummer för kvitto ${i + 1}.` });
+        return res.status(400).json({ error: `Totalkostnad krävs och måste vara ett nummer för redovisning ${i + 1}.` });
       }
       if (!receipt.vat || isNaN(parseFloat(receipt.vat))) {
-        return res.status(400).json({ error: `Moms krävs och måste vara ett nummer för kvitto ${i + 1}.` });
+        return res.status(400).json({ error: `Moms krävs och måste vara ett nummer för redovisning ${i + 1}.` });
       }
 
       // Additional Validation: Ensure date is a valid date
       const dateObj = new Date(receipt.date);
       if (isNaN(dateObj.getTime())) {
-        return res.status(400).json({ error: `Ogiltigt datum format för kvitto ${i + 1}.` });
-      }
-
-      // If costCenter is "Annat", ensure customCostCenter is provided
-      if (receipt.costCenter === 'Annat' && !receipt.customCostCenter) {
-        return res.status(400).json({ error: `Ange kostnadsställe för "Annat" alternativet för kvitto ${i + 1}.` });
+        return res.status(400).json({ error: `Ogiltigt datum format för redovisning ${i + 1}.` });
       }
     }
 
@@ -189,15 +204,30 @@ router.post('/process', upload.array('files'), async (req, res) => {
       return res.status(400).json({ error: 'Total moms är ogiltig.' });
     }
 
-    // Handle additional files
-    const additionalFiles = req.files || [];
-
-    console.log(`Received ${additionalFiles.length} additional file(s):`);
-    additionalFiles.forEach((file, index) => {
+    // Handle additional files associated with receipts
+    const uploadedFiles = req.files || [];
+    console.log(`Received ${uploadedFiles.length} additional file(s):`);
+    uploadedFiles.forEach((file, index) => {
       console.log(`File ${index + 1}:`);
       console.log(`  Original Name: ${file.originalname}`);
       console.log(`  Stored Path: ${file.path}`);
       console.log(`  MIME Type: ${file.mimetype}`);
+    });
+
+    // Associate uploaded files with receipts
+    receipts = receipts.map((receipt, index) => {
+      // Assuming files are uploaded in the same order as receipts
+      const file = uploadedFiles[index] || null;
+      return {
+        ...receipt,
+        file: file
+          ? {
+              path: file.path,
+              originalName: file.originalname,
+              mimeType: file.mimetype,
+            }
+          : null,
+      };
     });
 
     // Create new Receipt document
@@ -208,6 +238,8 @@ router.post('/process', upload.array('files'), async (req, res) => {
         ...receipt,
         totalCost: parseFloat(receipt.totalCost) || 0,
         vat: parseFloat(receipt.vat) || 0,
+        // Store file details if uploaded
+        imagePath: receipt.file ? receipt.file.path : null,
       })),
       totalAmount,
       totalVAT,
@@ -215,17 +247,12 @@ router.post('/process', upload.array('files'), async (req, res) => {
       clearingNumber: parsedPaymentInfo.clearingNumber,
       accountNumber: parsedPaymentInfo.accountNumber,
       otherMethod: parsedPaymentInfo.otherMethod,
-      additionalFiles: additionalFiles.map(file => ({
-        path: file.path,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-      })),
       sessionID: req.session ? req.session.id : '', // Associate with session
+      createdAt: new Date(),
     });
 
     await newReceipt.save();
     console.log('Receipt saved to database with ID:', newReceipt._id);
-    console.log('Additional Files:', newReceipt.additionalFiles);
 
     // Format date for the PDF filename
     const formattedDate = formatDate(parsedPersonalInfo.date);
@@ -249,7 +276,7 @@ router.post('/process', upload.array('files'), async (req, res) => {
       console.log('Email sent successfully.');
 
       // Cleanup: Delete PDF and Uploaded Files
-      await cleanupFiles(pdfPath, additionalFiles);
+      await cleanupFiles(pdfPath, uploadedFiles);
       console.log('Cleanup completed.');
 
       res.json({ message: 'PDF genererad och skickad via e-post.' });

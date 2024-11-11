@@ -3,10 +3,9 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid'); // Ensure uuidv4 is imported
 
 async function generatePDF(receiptData, pdfPath) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
       console.log('Starting PDF generation...');
       const doc = new PDFDocument({ margin: 50 });
@@ -126,9 +125,9 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Bankgiro: 829-6196 | Swish: 123 589 78 30', 50, footerY + 45);
 
       // Handle Additional Images
-      for (const file of receiptData.additionalFiles) {
-        if (file.mimeType.startsWith('image/')) {
-          let imagePath = path.join(__dirname, '../uploads', path.basename(file.path));
+      for (const receipt of receiptData.receipts) {
+        if (receipt.imagePath) {
+          const imagePath = receipt.imagePath;
 
           if (fs.existsSync(imagePath)) {
             doc.addPage();
