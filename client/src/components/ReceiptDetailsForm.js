@@ -16,13 +16,14 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
   useEffect(() => {
     // Update cookies whenever receipts change
-    setCookie('receipts', receipts, { path: '/' });
+    const receiptsWithoutFiles = receipts.map(({ file, ...rest }) => rest);
+    setCookie('receipts', receiptsWithoutFiles, { path: '/' });
   }, [receipts, setCookie]);
 
   const handleAddReceipt = () => {
     setReceipts([
       ...receipts,
-      { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', file: null },
+      { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', vat: '', file: null },
     ]);
   };
 
@@ -41,15 +42,16 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setReceipts(updatedReceipts);
   };
 
-//  const handleFileChange = (index, file) => {
-//    const updatedReceipts = receipts.map((receipt, i) => {
-//      if (i === index) {
-//        return { ...receipt, file };
-//      }
-//      return receipt;
-//    });
-//    setReceipts(updatedReceipts);
-//  };
+  // Define handleFileChange within the component
+  const handleFileChange = (index, file) => {
+    const updatedReceipts = receipts.map((receipt, i) => {
+      if (i === index) {
+        return { ...receipt, file };
+      }
+      return receipt;
+    });
+    setReceipts(updatedReceipts);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -66,9 +68,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
         return;
       }
     }
-
-    // Save data to cookies
-    setCookie('receipts', receipts, { path: '/' });
 
     // Pass data to parent component
     onNext(receipts);
