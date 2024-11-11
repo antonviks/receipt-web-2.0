@@ -132,7 +132,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                     type="text"
                     className="form-control"
                     value={receipt.customCostCenter}
-                    onChange={(e) => handleCustomCostCenterChange(index, e.target.value)}
+                    onChange={(e) => handleChange(index, 'customCostCenter', e.target.value)}
                     placeholder="Ange kostnadsställe"
                     required
                   />
