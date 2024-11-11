@@ -22,7 +22,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   const handleAddReceipt = () => {
     setReceipts([
       ...receipts,
-      { purpose: '', costCenter: '', customCostCenter: '', comment: '', file: null },
+      { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', file: null },
     ]);
   };
 
@@ -58,11 +58,11 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     for (let i = 0; i < receipts.length; i++) {
       const receipt = receipts[i];
       if (!receipt.date || !receipt.purpose || !receipt.costCenter || !receipt.totalCost || !receipt.vat) {
-        alert(`Vänligen fyll i alla obligatoriska fält för kvitto ${i + 1}.`);
+        alert(`Vänligen fyll i alla obligatoriska fält för redovisning ${i + 1}.`);
         return;
       }
       if (receipt.costCenter === 'Annat' && !receipt.customCostCenter.trim()) {
-        alert(`Ange kostnadsställe för kvitto ${i + 1}.`);
+        alert(`Ange kostnadsställe för redovisning ${i + 1}.`);
         return;
       }
     }
@@ -76,7 +76,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
   return (
     <div className="container mt-5">
-      <h2 className="text-center mb-4">Kvittoredovisning</h2>
+      <h2 className="text-center mb-4">Redovisning</h2>
       <form onSubmit={handleSubmit}>
         {receipts.map((receipt, index) => (
           <div key={index} className="card mb-3">
@@ -93,6 +93,20 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
               )}
             </div>
             <div className="card-body">
+              {/* Date Field */}
+              <div className="mb-3">
+                <label htmlFor={`date-${index}`} className="form-label">Datum</label>
+                <input
+                  type="date"
+                  id={`date-${index}`}
+                  className="form-control"
+                  value={receipt.date}
+                  onChange={(e) => handleChange(index, 'date', e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Purpose Field */}
               <div className="mb-3">
                 <label htmlFor={`purpose-${index}`} className="form-label">Ändamål</label>
                 <input
@@ -105,9 +119,11 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                 />
               </div>
 
+              {/* Cost Center Field */}
               <div className="mb-3">
                 <label htmlFor={`costCenter-${index}`} className="form-label">Kostnadsställe</label>
                 <select
+                  id={`costCenter-${index}`}
                   className="form-select"
                   value={receipt.costCenter}
                   onChange={(e) => handleChange(index, 'costCenter', e.target.value)}
@@ -125,11 +141,14 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   <option value="Annat">Annat</option>
                 </select>
               </div>
+
+              {/* Custom Cost Center Field (Conditional) */}
               {receipt.costCenter === 'Annat' && (
                 <div className="mb-3">
-                  <label className="form-label">Ange kostnadsställe</label>
+                  <label htmlFor={`customCostCenter-${index}`} className="form-label">Ange kostnadsställe</label>
                   <input
                     type="text"
+                    id={`customCostCenter-${index}`}
                     className="form-control"
                     value={receipt.customCostCenter}
                     onChange={(e) => handleChange(index, 'customCostCenter', e.target.value)}
@@ -138,44 +157,80 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   />
                 </div>
               )}
+
+              {/* Comment Field */}
               <div className="mb-3">
-                <label className="form-label">Kommentar (valfri)</label>
+                <label htmlFor={`comment-${index}`} className="form-label">Valfri kommentar (bokföringskonto)</label>
                 <input
                   type="text"
+                  id={`comment-${index}`}
                   className="form-control"
                   value={receipt.comment}
                   onChange={(e) => handleChange(index, 'comment', e.target.value)}
                   placeholder="Ange kommentar"
                 />
               </div>
+
+              {/* Total Cost Field */}
               <div className="mb-3">
-                <label className="form-label">Totalkostnad (SEK)</label>
+                <label htmlFor={`totalCost-${index}`} className="form-label">Totalkostnad (SEK)</label>
                 <input
-                  type="text"
+                  type="number"
+                  id={`totalCost-${index}`}
                   className="form-control"
                   value={receipt.totalCost}
                   onChange={(e) => handleChange(index, 'totalCost', e.target.value)}
                   placeholder="Ange totalkostnad"
                   required
+                  min="0"
+                  step="0.01"
                 />
               </div>
+
+              {/* VAT Field */}
               <div className="mb-3">
-                <label className="form-label">Moms (SEK)</label>
+                <label htmlFor={`vat-${index}`} className="form-label">Moms (SEK)</label>
                 <input
-                  type="text"
+                  type="number"
+                  id={`vat-${index}`}
                   className="form-control"
                   value={receipt.vat}
                   onChange={(e) => handleChange(index, 'vat', e.target.value)}
                   placeholder="Ange moms"
                   required
+                  min="0"
+                  step="0.01"
                 />
               </div>
-              {/* Removed file upload */}
+
+              {/* File Upload Field */}
+              <div className="mb-3">
+                <label htmlFor={`file-${index}`} className="form-label">Ladda upp bildfil (Valfritt)</label>
+                <input
+                  type="file"
+                  id={`file-${index}`}
+                  className="form-control"
+                  accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
+                  onChange={(e) => handleFileChange(index, e.target.files[0] || null)}
+                />
+                {receipt.file && (
+                  <div className="mt-2">
+                    <strong>Vald fil:</strong> {receipt.file.name}
+                    <button
+                      type="button"
+                      className="btn btn-link text-danger"
+                      onClick={() => handleFileChange(index, null)}
+                    >
+                      Ta bort
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
         <button type="button" className="btn btn-secondary mb-3" onClick={handleAddReceipt}>
-          Lägg till Kvitto
+          Lägg till redovisning
         </button>
         <br />
         <div className="d-flex justify-content-between">

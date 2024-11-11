@@ -46,7 +46,7 @@ function MultiStepForm() {
       formData.append('paymentInfo', JSON.stringify(paymentInfo));
       formData.append('receipts', JSON.stringify(receipts));
 
-      // Append additional files (images or PDFs) from receipts
+      // Append files from receipts
       receipts.forEach((receipt, index) => {
         if (receipt.file) {
           formData.append('files', receipt.file); // 'files' is the field name expected by the server
@@ -76,7 +76,7 @@ function MultiStepForm() {
         // Create a URL for the PDF Blob
         const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
         const pdfUrl = URL.createObjectURL(pdfBlob);
-        return pdfUrl;
+        window.open(pdfUrl, '_blank');
       } else if (action === 'finalize') {
         const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
           headers: {
@@ -84,11 +84,12 @@ function MultiStepForm() {
           },
         });
 
-        return response.data; // Expected to contain a success message
+        alert(response.data.message);
+        handleReset();
       }
     } catch (error) {
       console.error(`Error during ${action}:`, error);
-      throw error;
+      alert(`Ett fel inträffade under ${action}. Försök igen.`);
     }
   };
 
