@@ -127,14 +127,24 @@ async function generatePDF(receiptData, pdfPath) {
       // Handle Additional Images
       for (const receipt of receiptData.receipts) {
         if (receipt.imagePath) {
+          doc.addPage();
+
+          // Add 'ändamål' at the top of the page
+          doc
+            .font('Helvetica-Bold')
+            .fontSize(12)
+            .text(`Ändamål: ${receipt.purpose}`, 50, 50);
+
+          // Add the image below the 'ändamål' text
           const imagePath = receipt.imagePath;
 
           if (fs.existsSync(imagePath)) {
-            doc.addPage();
             doc.image(imagePath, {
               fit: [500, 600],
               align: 'center',
               valign: 'center',
+              // Adjust y-coordinate if needed
+              y: 80, // Start below the 'ändamål' text
             });
             console.log(`Embedded additional image: ${imagePath}`);
           } else {

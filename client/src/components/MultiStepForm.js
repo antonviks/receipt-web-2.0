@@ -30,8 +30,7 @@ function MultiStepForm() {
     setStep(3);
   };
 
-  const handlePaymentInfoNext = (data) => {
-    setPaymentInfo(data);
+  const handlePaymentInfoNext = () => {
     setStep(4);
   };
 
@@ -76,7 +75,7 @@ function MultiStepForm() {
         // Create a URL for the PDF Blob
         const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
         const pdfUrl = URL.createObjectURL(pdfBlob);
-        window.open(pdfUrl, '_blank');
+        return pdfUrl; // Return the URL to FinalizeForm.js
       } else if (action === 'finalize') {
         const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
           headers: {
@@ -84,12 +83,11 @@ function MultiStepForm() {
           },
         });
 
-        alert(response.data.message);
-        handleReset();
+        return response.data.message; // Return the success message
       }
     } catch (error) {
       console.error(`Error during ${action}:`, error);
-      alert(`Ett fel inträffade under ${action}. Försök igen.`);
+      throw error;
     }
   };
 

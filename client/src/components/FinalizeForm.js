@@ -12,7 +12,8 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
     try {
       setLoading(true);
       const url = await onFinalize('preview'); // Call parent handler with 'preview' action
-      setPdfUrl(url); // Set the PDF URL for the iframe
+      setPdfUrl(url); // Set the PDF URL for the "Send Email" button
+      window.open(url, '_blank'); // Open PDF in a new tab
       setLoading(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -25,7 +26,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
   const handleConfirm = async () => {
     try {
       setLoading(true);
-      await onFinalize('finalize'); // Call parent handler with 'finalize' action
+      const message = await onFinalize('finalize'); // Call parent handler with 'finalize' action
       console.log('Email sent successfully.');
       setSuccess(true); // Set success to true to display success message
       setLoading(false);
@@ -64,19 +65,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
             </button>
           </div>
 
-          {/* PDF Preview */}
-          {pdfUrl && (
-            <div className="mb-4">
-              <iframe
-                src={pdfUrl}
-                title="PDF Preview"
-                width="100%"
-                height="600px"
-              ></iframe>
-            </div>
-          )}
-
-          {/* Confirm Button (only after preview) */}
+          {/* Send Email Button - Always Visible After Preview */}
           {pdfUrl && (
             <div className="d-flex justify-content-center mb-4">
               <button 
