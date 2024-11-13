@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useCookies } from 'react-cookie';
+import heic2any from 'heic2any';
 
 function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['receipts']);
@@ -42,11 +43,29 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setReceipts(updatedReceipts);
   };
 
-  // Define handleFileChange within the component
-  const handleFileChange = (index, file) => {
+  // Updated handleFileChange with HEIC/HEIF conversion
+  const handleFileChange = async (index, file) => {
+    let processedFile = file;
+
+    // Convert HEIC/HEIF to JPEG if necessary
+    if (file && (file.type === 'image/heic' || file.type === 'image/heif')) {
+      try {
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.8,
+        });
+        processedFile = new File([convertedBlob], `${file.name.split('.')[0]}.jpg`, { type: 'image/jpeg' });
+      } catch (error) {
+        console.error('Error converting HEIC/HEIF:', error);
+        alert('Ett fel inträffade vid konvertering av bilden. Försök igen.');
+        return;
+      }
+    }
+
     const updatedReceipts = receipts.map((receipt, i) => {
       if (i === index) {
-        return { ...receipt, file };
+        return { ...receipt, file: processedFile };
       }
       return receipt;
     });
@@ -210,7 +229,10 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   id={`file-${index}`}
                   className="form-control"
                   accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
-                  onChange={(e) => handleFileChange(index, e.target.files[0] || null)}
+                  capture="environment"
+                  onChange={async (e) => {
+                    await handleFileChange(index, e.target.files[0] || null);
+                  }}
                 />
                 {receipt.file && (
                   <div className="mt-2">
