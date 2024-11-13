@@ -16,7 +16,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   }, []);
 
   useEffect(() => {
-    // Update cookies whenever receipts change
     const receiptsWithoutFiles = receipts.map(({ file, ...rest }) => rest);
     setCookie('receipts', receiptsWithoutFiles, { path: '/' });
   }, [receipts, setCookie]);
@@ -43,7 +42,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setReceipts(updatedReceipts);
   };
 
-  // Updated handleFileChange with HEIC/HEIF conversion
   const handleFileChange = async (index, file) => {
     let processedFile = file;
 
@@ -55,21 +53,29 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
           toType: 'image/jpeg',
           quality: 0.8,
         });
-        processedFile = new File([convertedBlob], `${file.name.split('.')[0]}.jpg`, { type: 'image/jpeg' });
+        const convertedFile = new File([convertedBlob], `${file.name.split('.')[0]}.jpg`, { type: 'image/jpeg' });
+
+        const updatedReceipts = receipts.map((receipt, i) => {
+          if (i === index) {
+            return { ...receipt, file: convertedFile };
+          }
+          return receipt;
+        });
+        setReceipts(updatedReceipts);
       } catch (error) {
         console.error('Error converting HEIC/HEIF:', error);
         alert('Ett fel inträffade vid konvertering av bilden. Försök igen.');
         return;
       }
+    } else {
+      const updatedReceipts = receipts.map((receipt, i) => {
+        if (i === index) {
+          return { ...receipt, file: file };
+        }
+        return receipt;
+      });
+      setReceipts(updatedReceipts);
     }
-
-    const updatedReceipts = receipts.map((receipt, i) => {
-      if (i === index) {
-        return { ...receipt, file: processedFile };
-      }
-      return receipt;
-    });
-    setReceipts(updatedReceipts);
   };
 
   const handleSubmit = (e) => {
@@ -156,7 +162,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   <option value="Musik /25">Musik /25</option>
                   <option value="Teknik /26">Teknik /26</option>
                   <option value="Fastighet /41">Fastighet /41</option>
-                  <option value="Annat">Annat</option>
+                  {/* <option value="Annat">Annat</option> */}
                 </select>
               </div>
 
@@ -229,7 +235,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   id={`file-${index}`}
                   className="form-control"
                   accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
-                  capture="environment"
                   onChange={async (e) => {
                     await handleFileChange(index, e.target.files[0] || null);
                   }}
