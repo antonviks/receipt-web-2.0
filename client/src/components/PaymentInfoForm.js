@@ -5,10 +5,10 @@ import { useCookies } from 'react-cookie';
 
 function PaymentInfoForm({ onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['paymentInfo']);
-  const [paymentMethod, setPaymentMethod] = useState('Bank');
-  const [bankName, setBankName] = useState('');
-  const [clearingNumber, setClearingNumber] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState(cookies.paymentInfo?.paymentMethod || 'Bank'); // Default to Bank
+  const [bankName, setBankName] = useState(cookies.paymentInfo?.bankName || '');
+  const [clearingNumber, setClearingNumber] = useState(cookies.paymentInfo?.clearingNumber || '');
+  const [accountNumber, setAccountNumber] = useState(cookies.paymentInfo?.accountNumber || '');
 
   useEffect(() => {
     // Load payment info from cookies if available
@@ -18,20 +18,20 @@ function PaymentInfoForm({ onNext, onBack }) {
       setClearingNumber(cookies.paymentInfo.clearingNumber);
       setAccountNumber(cookies.paymentInfo.accountNumber);
     }
-  }, []);
+  }, [cookies.paymentInfo]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Validation for Bank payment method
-    if (!bankName || !clearingNumber || !accountNumber) {
-      alert('Vänligen fyll i alla bankuppgifter.');
-      return;
+    if (paymentMethod === 'Bank') {
+      if (!bankName || !clearingNumber || !accountNumber) {
+        alert('Vänligen fyll i alla bankuppgifter.');
+        return;
+      }
+      // Save data to cookies, including otherMethod as an empty string
+      setCookie('paymentInfo', { paymentMethod, bankName, clearingNumber, accountNumber, otherMethod: '' }, { path: '/' });
+      onNext({ paymentMethod, bankName, clearingNumber, accountNumber, otherMethod: '' });
     }
-
-    // Save data to cookies
-    setCookie('paymentInfo', { paymentMethod, bankName, clearingNumber, accountNumber }, { path: '/' });
-    onNext({ paymentMethod, bankName, clearingNumber, accountNumber });
   };
 
   return (
@@ -59,51 +59,52 @@ function PaymentInfoForm({ onNext, onBack }) {
           </div>
         </div>
 
-        {/* Bank Details Fields */}
-        <div>
-          <div className="mb-3">
-            <label htmlFor="bankName" className="form-label">
-              Bankens namn
-            </label>
-            <input
-              type="text"
-              className="form-control"
-              id="bankName"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              placeholder="Ange bankens namn"
-              required
-            />
+        {paymentMethod === 'Bank' && (
+          <div>
+            <div className="mb-3">
+              <label htmlFor="bankName" className="form-label">
+                Bankens namn
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                id="bankName"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="Ange bankens namn"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="clearingNumber" className="form-label">
+                Clearing nummer
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                id="clearingNumber"
+                value={clearingNumber}
+                onChange={(e) => setClearingNumber(e.target.value)}
+                placeholder="Ange clearing nummer"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="accountNumber" className="form-label">
+                Kontonummer
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                id="accountNumber"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="Ange kontonummer"
+                required
+              />
+            </div>
           </div>
-          <div className="mb-3">
-            <label htmlFor="clearingNumber" className="form-label">
-              Clearing nummer
-            </label>
-            <input
-              type="text"
-              className="form-control"
-              id="clearingNumber"
-              value={clearingNumber}
-              onChange={(e) => setClearingNumber(e.target.value)}
-              placeholder="Ange clearing nummer"
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="accountNumber" className="form-label">
-              Kontonummer
-            </label>
-            <input
-              type="text"
-              className="form-control"
-              id="accountNumber"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="Ange kontonummer"
-              required
-            />
-          </div>
-        </div>
+        )}
 
         <hr />
         <div className="d-flex justify-content-between">

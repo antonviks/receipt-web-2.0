@@ -102,7 +102,7 @@ async function generatePDF(receiptData, pdfPath) {
         .text(`Bankens namn: ${receiptData.bankName || '-'}`, 50, paymentY + 25)
         .text(`Clearing nummer: ${receiptData.clearingNumber || '-'}`, 50, paymentY + 45)
         .text(`Kontonummer: ${receiptData.accountNumber || '-'}`, 50, paymentY + 65)
-        .text(`Annat sätt: ${receiptData.otherMethod || '-'}`, 50, paymentY + 85);
+        // .text(`Annat sätt: ${receiptData.otherMethod || '-'}`, 50, paymentY + 85);
 
       // Footer Section
       const footerY = doc.page.height - doc.page.margins.bottom - 60;
@@ -143,8 +143,7 @@ async function generatePDF(receiptData, pdfPath) {
               fit: [500, 600],
               align: 'center',
               valign: 'center',
-              // Adjust y-coordinate if needed
-              y: 80, // Start below the 'ändamål' text
+              y: 80,
             });
             console.log(`Embedded additional image: ${imagePath}`);
           } else {
