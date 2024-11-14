@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 
 function FinalizeForm({ onFinalize, onBack, onReset }) {
-  const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -11,10 +10,20 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
   const handlePreview = async () => {
     try {
       setLoading(true);
-      const url = await onFinalize('preview'); // Call parent handler with 'preview' action
-      setPdfUrl(url); // Set the PDF URL for the "Send Email" button
-      window.open(url, '_blank'); // Open PDF in a new tab
+      const pdfBlobUrl = await onFinalize('preview'); // Call parent handler with 'preview' action
       setLoading(false);
+
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = pdfBlobUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click(); // Programmatically click the link to open the PDF
+
+      // Optionally, revoke the object URL after a delay to free memory
+      setTimeout(() => {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }, 1000);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Ett fel uppstod vid förhandsgranskning av PDF.');
@@ -66,17 +75,15 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
           </div>
 
           {/* Send Email Button - Always Visible After Preview */}
-          {pdfUrl && (
-            <div className="d-flex justify-content-center mb-4">
-              <button 
-                className="btn btn-primary" 
-                onClick={handleConfirm} 
-                disabled={loading}
-              >
-                {loading ? 'Skickar...' : 'Skicka via e-post till ekonomirådet'}
-              </button>
-            </div>
-          )}
+          <div className="d-flex justify-content-center mb-4">
+            <button 
+              className="btn btn-primary" 
+              onClick={handleConfirm} 
+              disabled={loading}
+            >
+              {loading ? 'Skickar...' : 'Skicka via e-post till ekonomirådet'}
+            </button>
+          </div>
         </>
       ) : (
         // Success Message and Reset Button

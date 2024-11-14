@@ -247,7 +247,8 @@ router.post('/process', upload.array('files'), async (req, res) => {
       clearingNumber: parsedPaymentInfo.clearingNumber,
       accountNumber: parsedPaymentInfo.accountNumber,
       otherMethod: parsedPaymentInfo.otherMethod,
-      sessionID: req.session ? req.session.id : '', // Associate with session
+      userEmail: parsedPaymentInfo.email || null, 
+      sessionID: req.session ? req.session.id : '', 
       createdAt: new Date(),
     });
 
@@ -271,8 +272,8 @@ router.post('/process', upload.array('files'), async (req, res) => {
       res.setHeader('Content-Type', 'application/pdf');
       res.send(pdfBuffer);
     } else if (action === 'finalize') {
-      // Send Email
-      await sendEmail(newReceipt.name, pdfPath, pdfFilename);
+      // Send Email, pass userEmail
+      await sendEmail(newReceipt.name, pdfPath, pdfFilename, newReceipt.userEmail);
       console.log('Email sent successfully.');
 
       // Cleanup: Delete PDF and Uploaded Files

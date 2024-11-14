@@ -31,6 +31,9 @@ const receiptSchema = new mongoose.Schema({
   accountNumber: { type: String },
   otherMethod: { type: String },
 
+  // Optional user email
+  userEmail: { type: String }, // New field
+
   // Session ID for association
   sessionID: { type: String, required: true },
 

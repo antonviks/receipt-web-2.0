@@ -8,7 +8,6 @@ require('dotenv').config();
 const {
   EMAIL_USER,
   EMAIL_RECIPIENT,
-  EMAIL_COPY,
   OAUTH_CLIENT_ID,
   OAUTH_CLIENT_SECRET,
   OAUTH_REFRESH_TOKEN,
@@ -25,7 +24,7 @@ oauth2Client.setCredentials({
   refresh_token: OAUTH_REFRESH_TOKEN,
 });
 
-async function sendEmail(recipientName, pdfPath, pdfFilename) {
+async function sendEmail(recipientName, pdfPath, pdfFilename, userEmail) { // Added userEmail
   try {
     // Verify PDF file exists
     if (!fs.existsSync(pdfPath)) {
@@ -55,9 +54,8 @@ async function sendEmail(recipientName, pdfPath, pdfFilename) {
 
     // Define Mail Options
     const mailOptions = {
-      from: EMAIL_USER,
+      from: `"Korskyrkans Redovisningsapp" <${EMAIL_USER}>`,
       to: EMAIL_RECIPIENT,
-      cc: EMAIL_COPY,
       subject: 'Kvittounderlag',
       text: `Hej,\n\nHär kommer bifogade kvitton för ${recipientName}.\n\nMvh,\nAnton`,
       attachments: [
@@ -69,6 +67,11 @@ async function sendEmail(recipientName, pdfPath, pdfFilename) {
       ],
     };
 
+    // If userEmail is provided and valid, add it as CC
+    if (userEmail && validateEmail(userEmail)) {
+      mailOptions.cc = userEmail;
+    }
+
     // Send Email
     const result = await transporter.sendMail(mailOptions);
     console.log('Email sent:', result.response);
@@ -76,6 +79,12 @@ async function sendEmail(recipientName, pdfPath, pdfFilename) {
     console.error('Error sending email:', error);
     throw error;
   }
+}
+
+// Helper function to validate email format
+function validateEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
 module.exports = sendEmail;

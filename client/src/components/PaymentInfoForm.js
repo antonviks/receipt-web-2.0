@@ -9,6 +9,7 @@ function PaymentInfoForm({ onNext, onBack }) {
   const [bankName, setBankName] = useState(cookies.paymentInfo?.bankName || '');
   const [clearingNumber, setClearingNumber] = useState(cookies.paymentInfo?.clearingNumber || '');
   const [accountNumber, setAccountNumber] = useState(cookies.paymentInfo?.accountNumber || '');
+  const [email, setEmail] = useState(cookies.paymentInfo?.email || ''); // New state for optional email
 
   useEffect(() => {
     // Load payment info from cookies if available
@@ -17,6 +18,7 @@ function PaymentInfoForm({ onNext, onBack }) {
       setBankName(cookies.paymentInfo.bankName);
       setClearingNumber(cookies.paymentInfo.clearingNumber);
       setAccountNumber(cookies.paymentInfo.accountNumber);
+      setEmail(cookies.paymentInfo.email || '');
     }
   }, [cookies.paymentInfo]);
 
@@ -28,9 +30,9 @@ function PaymentInfoForm({ onNext, onBack }) {
         alert('Vänligen fyll i alla bankuppgifter.');
         return;
       }
-      // Save data to cookies, including otherMethod as an empty string
-      setCookie('paymentInfo', { paymentMethod, bankName, clearingNumber, accountNumber, otherMethod: '' }, { path: '/' });
-      onNext({ paymentMethod, bankName, clearingNumber, accountNumber, otherMethod: '' });
+
+      setCookie('paymentInfo', { paymentMethod, bankName, clearingNumber, accountNumber, email }, { path: '/' });
+      onNext({ paymentMethod, bankName, clearingNumber, accountNumber, email }); // Pass email to onNext
     }
   };
 
@@ -101,6 +103,20 @@ function PaymentInfoForm({ onNext, onBack }) {
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder="Ange kontonummer"
                 required
+              />
+            </div>
+            {/* Optional Email Address Field */}
+            <div className="mb-3">
+              <label htmlFor="email" className="form-label">
+                E-postadress (Valfritt)
+              </label>
+              <input
+                type="email"
+                className="form-control"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Ange din e-postadress om du vill få en kopia via e-post"
               />
             </div>
           </div>

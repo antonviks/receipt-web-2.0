@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import PasswordPrompt from './PasswordPrompt';
 import PersonalInfoForm from './PersonalInfoForm';
 import ReceiptDetailsForm from './ReceiptDetailsForm';
-// import AdditionalFilesForm from './AdditionalFilesForm';
 import PaymentInfoForm from './PaymentInfoForm';
 import FinalizeForm from './FinalizeForm';
 import axios from 'axios';
@@ -30,7 +29,8 @@ function MultiStepForm() {
     setStep(3);
   };
 
-  const handlePaymentInfoNext = () => {
+  const handlePaymentInfoNext = (data) => {
+    setPaymentInfo(data);
     setStep(4);
   };
 
@@ -125,8 +125,6 @@ function MultiStepForm() {
       )}
       {step === 3 && (
         <PaymentInfoForm
-          paymentInfo={paymentInfo}
-          setPaymentInfo={setPaymentInfo}
           onNext={handlePaymentInfoNext}
           onBack={handleBack}
         />
