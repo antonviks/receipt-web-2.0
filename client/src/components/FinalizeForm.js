@@ -1,32 +1,39 @@
 // client/src/components/FinalizeForm.js
 
 import React, { useState } from 'react';
+import { Modal, Button } from 'react-bootstrap';
 
 function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  
+  // New state variables for modal
+  const [showModal, setShowModal] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  
+  // Functions to handle modal
+  const handleClose = () => setShowModal(false);
+  const handleShow = () => setShowModal(true);
 
   // Handle Preview Button Click
   const handlePreview = async () => {
     try {
       setLoading(true);
-      const pdfBlobUrl = await onFinalize('preview'); // Call parent handler with 'preview' action
+      
+      // Call the parent handler with 'preview' action and get the PDF Blob URL
+      const pdfBlobUrl = await onFinalize('preview');
       setLoading(false);
-
-      // Create a temporary link element
-      const link = document.createElement('a');
-      link.href = pdfBlobUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.click(); // Programmatically click the link to open the PDF
-
-      // Optionally, revoke the object URL after a delay to free memory
-      setTimeout(() => {
-        URL.revokeObjectURL(pdfBlobUrl);
-      }, 1000);
+      
+      if (!pdfBlobUrl) {
+        throw new Error('Failed to generate PDF URL.');
+      }
+      
+      // Set the PDF URL to state and show the modal
+      setPdfUrl(pdfBlobUrl);
+      handleShow();
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Ett fel uppstod vid förhandsgranskning av PDF.');
+      alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
       setLoading(false);
     }
   };
@@ -43,7 +50,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
       onReset();
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('Ett fel uppstod vid generering av utläggsblankett.');
+      alert('Ett fel uppstod vid generering av utläggsblankett. Försök igen.');
       setLoading(false);
     }
   };
@@ -74,7 +81,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
             </button>
           </div>
 
-          {/* Send Email Button - Always Visible After Preview */}
+          {/* Send Email Button */}
           <div className="d-flex justify-content-center mb-4">
             <button 
               className="btn btn-primary" 
@@ -97,6 +104,30 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
           </button>
         </div>
       )}
+
+      {/* Modal for PDF Preview */}
+      <Modal show={showModal} onHide={handleClose} size="xl" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Förhandsgranskning av PDF</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {pdfUrl ? (
+            <iframe
+              src={pdfUrl}
+              title="PDF Preview"
+              width="100%"
+              height="600px"
+            />
+          ) : (
+            <p>Ingen PDF tillgänglig.</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>
+            Stäng
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
