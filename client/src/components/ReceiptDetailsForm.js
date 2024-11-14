@@ -139,6 +139,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   className="form-control"
                   value={receipt.purpose}
                   onChange={(e) => handleChange(index, 'purpose', e.target.value)}
+                  placeholder="Ange ändamål"
                   required
                 />
               </div>
@@ -191,7 +192,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   className="form-control"
                   value={receipt.comment}
                   onChange={(e) => handleChange(index, 'comment', e.target.value)}
-                  placeholder="Ange kommentar"
                 />
               </div>
 
@@ -229,7 +229,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
               {/* File Upload Field */}
               <div className="mb-3">
-                <label htmlFor={`file-${index}`} className="form-label">Ladda upp bildfil (Valfritt)</label>
+                <label htmlFor={`file-${index}`} className="form-label">Ladda upp bild på kvitto</label>
                 <input
                   type="file"
                   id={`file-${index}`}

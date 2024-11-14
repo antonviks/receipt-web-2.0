@@ -108,7 +108,7 @@ function PaymentInfoForm({ onNext, onBack }) {
             {/* Optional Email Address Field */}
             <div className="mb-3">
               <label htmlFor="email" className="form-label">
-                E-postadress (Valfritt)
+                E-postadress (Om du vill få en kopia)
               </label>
               <input
                 type="email"
@@ -116,7 +116,7 @@ function PaymentInfoForm({ onNext, onBack }) {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Ange din e-postadress om du vill få en kopia via e-post"
+                placeholder="Ange din e-post (valfritt)"
               />
             </div>
           </div>
