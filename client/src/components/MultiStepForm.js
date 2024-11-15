@@ -70,6 +70,7 @@ function MultiStepForm() {
             'Content-Type': 'multipart/form-data',
           },
           responseType: 'blob', // Important for handling PDF
+          withCredentials: true,
         });
 
         // Create a URL for the PDF Blob
@@ -81,6 +82,7 @@ function MultiStepForm() {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
+          withCredentials: true,
         });
 
         return response.data.message; // Return the success message

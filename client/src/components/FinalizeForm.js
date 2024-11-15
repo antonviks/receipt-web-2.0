@@ -10,9 +10,16 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
   // New state variables for modal
   const [showModal, setShowModal] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
-  
+
   // Functions to handle modal
-  const handleClose = () => setShowModal(false);
+  const handleClose = () => {
+    setShowModal(false);
+    
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+  };
   const handleShow = () => setShowModal(true);
 
   // Handle Preview Button Click
@@ -117,6 +124,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
               title="PDF Preview"
               width="100%"
               height="600px"
+              style={{ border: 'none' }}
             />
           ) : (
             <p>Ingen PDF tillgänglig.</p>

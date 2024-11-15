@@ -1,6 +1,6 @@
 // server/index.js
 
-require('dotenv').config(); // Load environment variables
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -44,9 +44,9 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: mongoURI }),
   cookie: { 
     maxAge: 1000 * 60 * 60 * 24, // 1 day
-    httpOnly: true, // Prevents client-side JS from accessing the cookie
-    secure: process.env.NODE_ENV === 'production', // Ensures cookies are sent over HTTPS
-    sameSite: 'lax', // Protects against CSRF
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
   },
 }));
 
@@ -62,14 +62,6 @@ app.use(express.static(path.join(__dirname, '../client/build')));
 
 // API Routes
 app.use('/api/receipts', receiptRoutes);
-
-// Remove or comment out the catchall handler if frontend is deployed separately
-// If you intend to serve the frontend from the backend, ensure 'client/build' exists
-/*
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
-});
-*/
 
 const PORT = process.env.PORT || 5001;
 
