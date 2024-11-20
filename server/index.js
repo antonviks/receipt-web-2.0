@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const receiptRoutes = require('./routes/receipts');
 const path = require('path');
 const fs = require('fs');
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 // Define directories
 const uploadsDir = path.join(__dirname, 'uploads');
