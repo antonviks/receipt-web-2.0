@@ -1,43 +1,32 @@
 // client/src/components/FinalizeForm.js
 
 import React, { useState } from 'react';
-import { Modal, Button } from 'react-bootstrap';
 
 function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  
-  // New state variables for modal
-  const [showModal, setShowModal] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState(null);
-
-  // Functions to handle modal
-  const handleClose = () => {
-    setShowModal(false);
-    
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-      setPdfUrl(null);
-    }
-  };
-  const handleShow = () => setShowModal(true);
+  const [showEmbeddedPDF, setShowEmbeddedPDF] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
 
   // Handle Preview Button Click
   const handlePreview = async () => {
     try {
       setLoading(true);
-      
-      // Call the parent handler with 'preview' action and get the PDF Blob URL
-      const pdfBlobUrl = await onFinalize('preview');
+      const blobUrl = await onFinalize('preview'); // Call parent handler with 'preview' action
       setLoading(false);
-      
-      if (!pdfBlobUrl) {
+
+      if (!blobUrl) {
         throw new Error('Failed to generate PDF URL.');
       }
-      
-      // Set the PDF URL to state and show the modal
-      setPdfUrl(pdfBlobUrl);
-      handleShow();
+
+      // Use window.location.href to navigate to the PDF Blob URL
+      window.location.href = blobUrl;
+
+      // Optional: Uncomment the lines below to use embedded PDF instead
+      /*
+      setPdfBlobUrl(blobUrl);
+      setShowEmbeddedPDF(true);
+      */
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
@@ -60,6 +49,12 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
       alert('Ett fel uppstod vid generering av utläggsblankett. Försök igen.');
       setLoading(false);
     }
+  };
+
+  // Handle Closing the Embedded PDF
+  const handleCloseEmbeddedPDF = () => {
+    setShowEmbeddedPDF(false);
+    setPdfBlobUrl(null);
   };
 
   return (
@@ -88,6 +83,21 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
             </button>
           </div>
 
+          {/* Optionally, embed the PDF using an iframe */}
+          {showEmbeddedPDF && pdfBlobUrl && (
+            <div className="mb-4">
+              <button className="btn btn-danger mb-2" onClick={handleCloseEmbeddedPDF}>
+                Stäng förhandsgranskning
+              </button>
+              <iframe
+                src={pdfBlobUrl}
+                title="PDF Preview"
+                width="100%"
+                height="600px"
+              />
+            </div>
+          )}
+
           {/* Send Email Button */}
           <div className="d-flex justify-content-center mb-4">
             <button 
@@ -111,31 +121,6 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
           </button>
         </div>
       )}
-
-      {/* Modal for PDF Preview */}
-      <Modal show={showModal} onHide={handleClose} size="xl" centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Förhandsgranskning av PDF</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {pdfUrl ? (
-            <iframe
-              src={pdfUrl}
-              title="PDF Preview"
-              width="100%"
-              height="600px"
-              style={{ border: 'none' }}
-            />
-          ) : (
-            <p>Ingen PDF tillgänglig.</p>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Stäng
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 }
