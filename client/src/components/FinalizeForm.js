@@ -1,32 +1,27 @@
 // client/src/components/FinalizeForm.js
 
 import React, { useState } from 'react';
-import { Modal, Button } from 'react-bootstrap'; 
+import { Modal, Button } from 'react-bootstrap';
 
 function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [showModal, setShowModal] = useState(false); 
-  const [pdfBlobUrl, setPdfBlobUrl] = useState(null); 
+  const [showEmbeddedPDF, setShowEmbeddedPDF] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
 
   // Handle Preview Button Click
   const handlePreview = async () => {
     try {
       setLoading(true);
-      const blobUrl = await onFinalize('preview'); 
+      const blobUrl = await onFinalize('preview');
       setLoading(false);
 
       if (!blobUrl) {
         throw new Error('Failed to generate PDF URL.');
       }
 
-      // Revoke previous Blob URL if exists to prevent memory leaks
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-      }
-
-      setPdfBlobUrl(blobUrl); // Set the Blob URL
-      setShowModal(true); // Show the modal
+      setPdfBlobUrl(blobUrl);
+      setShowEmbeddedPDF(true);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
@@ -52,8 +47,8 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
   };
 
   // Handle Closing the Modal
-  const handleCloseModal = () => {
-    setShowModal(false);
+  const handleCloseEmbeddedPDF = () => {
+    setShowEmbeddedPDF(false);
     if (pdfBlobUrl) {
       URL.revokeObjectURL(pdfBlobUrl);
       setPdfBlobUrl(null);
@@ -99,12 +94,12 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
 
           {/* PDF Preview Modal */}
           <Modal 
-            show={showModal} 
-            onHide={handleCloseModal} 
+            show={showEmbeddedPDF} 
+            onHide={handleCloseEmbeddedPDF} 
             size="lg" 
             centered
-            backdrop="static" // Prevent closing by clicking outside
-            keyboard={false}   // Prevent closing with keyboard
+            backdrop="static"
+            keyboard={false}
           >
             <Modal.Header closeButton>
               <Modal.Title>Förhandsgranskning av PDF</Modal.Title>
@@ -127,7 +122,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
               )}
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="secondary" onClick={handleCloseModal}>
+              <Button variant="secondary" onClick={handleCloseEmbeddedPDF}>
                 Stäng
               </Button>
               <Button variant="primary" onClick={() => window.open(pdfBlobUrl, '_blank')}>
