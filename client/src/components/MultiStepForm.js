@@ -69,14 +69,12 @@ function MultiStepForm() {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          responseType: 'blob', // Important for handling PDF
           withCredentials: true,
         });
 
-        // Create a URL for the PDF Blob
-        const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        return pdfUrl; // Return the URL to FinalizeForm.js
+        const { pdfUrl } = response.data;
+        const fullPdfUrl = `${process.env.REACT_APP_API_URL}${pdfUrl}`;
+        return fullPdfUrl; // Return the full URL to FinalizeForm.js
       } else if (action === 'finalize') {
         const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
           headers: {

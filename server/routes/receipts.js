@@ -267,10 +267,9 @@ router.post('/process', upload.array('files'), async (req, res) => {
     console.log('PDF generated at:', pdfPath);
 
     if (action === 'preview') {
-      // Read the generated PDF and send it as a buffer
-      const pdfBuffer = fs.readFileSync(pdfPath);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.send(pdfBuffer);
+      // Send back the URL to the PDF
+      const pdfUrl = `/output/${pdfFilename}`;
+      res.json({ pdfUrl });
     } else if (action === 'finalize') {
       // Send Email, pass userEmail
       await sendEmail(newReceipt.name, pdfPath, pdfFilename, newReceipt.userEmail);

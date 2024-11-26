@@ -1,27 +1,28 @@
 // client/src/components/FinalizeForm.js
 
 import React, { useState } from 'react';
-import { Modal, Button } from 'react-bootstrap';
 
 function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [showEmbeddedPDF, setShowEmbeddedPDF] = useState(false);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
 
   // Handle Preview Button Click
   const handlePreview = async () => {
     try {
       setLoading(true);
-      const blobUrl = await onFinalize('preview');
+      const pdfUrl = await onFinalize('preview');
       setLoading(false);
 
-      if (!blobUrl) {
+      if (!pdfUrl) {
         throw new Error('Failed to generate PDF URL.');
       }
 
-      setPdfBlobUrl(blobUrl);
-      setShowEmbeddedPDF(true);
+      // Open the PDF in a new tab/window
+      const newWindow = window.open(pdfUrl, '_blank');
+      if (!newWindow) {
+        // Handle popup blockers
+        alert('Tillåt popup-fönster för att visa PDF-förhandsgranskningen.');
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
@@ -43,15 +44,6 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
       console.error('Error sending email:', error);
       alert('Ett fel uppstod vid generering av utläggsblankett. Försök igen.');
       setLoading(false);
-    }
-  };
-
-  // Handle Closing the Modal
-  const handleCloseEmbeddedPDF = () => {
-    setShowEmbeddedPDF(false);
-    if (pdfBlobUrl) {
-      URL.revokeObjectURL(pdfBlobUrl);
-      setPdfBlobUrl(null);
     }
   };
 
@@ -91,45 +83,6 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
               {loading ? 'Skickar...' : 'Skicka via e-post till ekonomirådet'}
             </button>
           </div>
-
-          {/* PDF Preview Modal */}
-          <Modal 
-            show={showEmbeddedPDF} 
-            onHide={handleCloseEmbeddedPDF} 
-            size="lg" 
-            centered
-            backdrop="static"
-            keyboard={false}
-          >
-            <Modal.Header closeButton>
-              <Modal.Title>Förhandsgranskning av PDF</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              {pdfBlobUrl ? (
-                <iframe
-                  src={pdfBlobUrl}
-                  title="PDF Preview"
-                  width="100%"
-                  height="600px"
-                  style={{ border: 'none' }}
-                />
-              ) : (
-                <div className="d-flex justify-content-center align-items-center" style={{ height: '600px' }}>
-                  <div className="spinner-border" role="status">
-                    <span className="visually-hidden">Laddar...</span>
-                  </div>
-                </div>
-              )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={handleCloseEmbeddedPDF}>
-                Stäng
-              </Button>
-              <Button variant="primary" onClick={() => window.open(pdfBlobUrl, '_blank')}>
-                Öppna i ny flik
-              </Button>
-            </Modal.Footer>
-          </Modal>
         </>
       ) : (
         // Success Message and Reset Button
