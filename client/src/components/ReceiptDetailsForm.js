@@ -259,7 +259,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
           Lägg till redovisning
         </button>
         <br />
-        <div className="d-flex justify-content-between">
+        <div className="d-flex justify-content-between mb-4">
           {onBack && (
             <button
               type="button"
