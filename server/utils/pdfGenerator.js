@@ -3,7 +3,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const { PDFDocument: PDFLib } = require('pdf-lib');
+const { PDFDocument: PDFLib, StandardFonts } = require('pdf-lib'); // Updated import statement
 
 async function generatePDF(receiptData, pdfPath) {
   return new Promise(async (resolve, reject) => {
@@ -181,14 +181,16 @@ async function generatePDF(receiptData, pdfPath) {
               const pdfDoc = await PDFLib.load(pdfBytes);
 
               // Create a new page with 'ändamål' header
-              const [newPage] = await mainPdfDoc.copyPages(mainPdfDoc, [0]); // Copy a blank page
+              const newPage = mainPdfDoc.addPage();
+              const { width, height } = newPage.getSize();
+
+              const helveticaBoldFont = await mainPdfDoc.embedFont(StandardFonts.HelveticaBold); // Use StandardFonts
               newPage.drawText(`Ändamål: ${purpose}`, {
                 x: 50,
-                y: mainPdfDoc.getPage(0).getHeight() - 50,
+                y: height - 50,
                 size: 12,
-                font: await mainPdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
+                font: helveticaBoldFont,
               });
-              mainPdfDoc.addPage(newPage);
 
               // Copy pages from the uploaded PDF to the main PDF
               const copiedPages = await mainPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
@@ -215,7 +217,6 @@ async function generatePDF(receiptData, pdfPath) {
           fs.renameSync(tempPdfPath, pdfPath);
           resolve();
         }
-
       });
 
       writeStream.on('error', (err) => {
