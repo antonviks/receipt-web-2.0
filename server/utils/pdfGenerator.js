@@ -3,13 +3,15 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { PDFDocument: PDFLib } = require('pdf-lib');
 
 async function generatePDF(receiptData, pdfPath) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       console.log('Starting PDF generation...');
+      const tempPdfPath = path.join(__dirname, '../output/temp.pdf');
       const doc = new PDFDocument({ margin: 50 });
-      const writeStream = fs.createWriteStream(pdfPath);
+      const writeStream = fs.createWriteStream(tempPdfPath);
       doc.pipe(writeStream);
 
       // Insert logo in the top left
@@ -101,12 +103,11 @@ async function generatePDF(receiptData, pdfPath) {
         .fontSize(10)
         .text(`Bankens namn: ${receiptData.bankName || '-'}`, 50, paymentY + 25)
         .text(`Clearing nummer: ${receiptData.clearingNumber || '-'}`, 50, paymentY + 45)
-        .text(`Kontonummer: ${receiptData.accountNumber || '-'}`, 50, paymentY + 65)
-        // .text(`Annat sätt: ${receiptData.otherMethod || '-'}`, 50, paymentY + 85);
+        .text(`Kontonummer: ${receiptData.accountNumber || '-'}`, 50, paymentY + 65);
 
       // Footer Section
       const footerY = doc.page.height - doc.page.margins.bottom - 60;
-      
+
       // Draw Divider Above Footer
       const dividerY = footerY - 10;
       doc
@@ -124,45 +125,104 @@ async function generatePDF(receiptData, pdfPath) {
         .text('www.korskyrkanstockholm.se | info@korskyrkanstockholm.se', 50, footerY + 30)
         .text('Bankgiro: 829-6196 | Swish: 123 589 78 30', 50, footerY + 45);
 
-      // Handle Additional Images
+      // Handle Additional Images and PDFs
+      const uploadedPdfPaths = [];
+
       for (const receipt of receiptData.receipts) {
         if (receipt.imagePath) {
-          doc.addPage();
+          const fileExtension = path.extname(receipt.imagePath).toLowerCase();
 
-          // Add 'ändamål' at the top of the page
-          doc
-            .font('Helvetica-Bold')
-            .fontSize(12)
-            .text(`Ändamål: ${receipt.purpose}`, 50, 50);
-
-          // Add the image below the 'ändamål' text
-          const imagePath = receipt.imagePath;
-
-          if (fs.existsSync(imagePath)) {
-            doc.image(imagePath, {
-              fit: [500, 600],
-              align: 'center',
-              valign: 'center',
-              y: 80,
-            });
-            console.log(`Embedded additional image: ${imagePath}`);
+          if (fileExtension === '.pdf') {
+            // If the uploaded file is a PDF, collect its path to merge later
+            uploadedPdfPaths.push({ path: receipt.imagePath, purpose: receipt.purpose });
           } else {
-            console.error(`Image path does not exist: ${imagePath}`);
+            // It's an image, add a new page and embed the image
+            doc.addPage();
+
+            // Add 'ändamål' at the top of the page
+            doc
+              .font('Helvetica-Bold')
+              .fontSize(12)
+              .text(`Ändamål: ${receipt.purpose}`, 50, 50);
+
+            // Add the image below the 'ändamål' text
+            const imagePath = receipt.imagePath;
+
+            if (fs.existsSync(imagePath)) {
+              doc.image(imagePath, {
+                fit: [500, 600],
+                align: 'center',
+                valign: 'center',
+                y: 80,
+              });
+              console.log(`Embedded additional image: ${imagePath}`);
+            } else {
+              console.error(`Image path does not exist: ${imagePath}`);
+            }
           }
         }
       }
 
       doc.end();
 
-      writeStream.on('finish', () => {
+      writeStream.on('finish', async () => {
         console.log('PDF generation completed successfully.');
-        resolve();
+
+        if (uploadedPdfPaths.length > 0) {
+          // Use pdf-lib to merge PDFs
+          try {
+            // Load the main PDF
+            const mainPdfBytes = fs.readFileSync(tempPdfPath);
+            const mainPdfDoc = await PDFLib.load(mainPdfBytes);
+
+            // For each uploaded PDF
+            for (const { path: pdfPath, purpose } of uploadedPdfPaths) {
+              const pdfBytes = fs.readFileSync(pdfPath);
+              const pdfDoc = await PDFLib.load(pdfBytes);
+
+              // Create a new page with 'ändamål' header
+              const [newPage] = await mainPdfDoc.copyPages(mainPdfDoc, [0]); // Copy a blank page
+              newPage.drawText(`Ändamål: ${purpose}`, {
+                x: 50,
+                y: mainPdfDoc.getPage(0).getHeight() - 50,
+                size: 12,
+                font: await mainPdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
+              });
+              mainPdfDoc.addPage(newPage);
+
+              // Copy pages from the uploaded PDF to the main PDF
+              const copiedPages = await mainPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
+              copiedPages.forEach((page) => {
+                mainPdfDoc.addPage(page);
+              });
+            }
+
+            // Save the merged PDF
+            const mergedPdfBytes = await mainPdfDoc.save();
+            fs.writeFileSync(pdfPath, mergedPdfBytes);
+
+            // Remove the temporary PDF
+            fs.unlinkSync(tempPdfPath);
+
+            console.log('PDFs merged successfully.');
+            resolve();
+          } catch (mergeError) {
+            console.error('Error merging PDFs:', mergeError);
+            reject(mergeError);
+          }
+        } else {
+          // No PDFs to merge, just rename the temp PDF to the final path
+          fs.renameSync(tempPdfPath, pdfPath);
+          resolve();
+        }
+
       });
 
       writeStream.on('error', (err) => {
         console.error('Error writing PDF:', err);
         reject(err);
       });
+
     } catch (error) {
       console.error('Error during PDF generation:', error);
       reject(error);
@@ -170,13 +230,13 @@ async function generatePDF(receiptData, pdfPath) {
   });
 }
 
-    // Function to format dates in YYYY-MM-DD format
-    function formatDate(date) {
-      const d = new Date(date);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
+// Function to format dates in YYYY-MM-DD format
+function formatDate(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-    module.exports = generatePDF;
+module.exports = generatePDF;
