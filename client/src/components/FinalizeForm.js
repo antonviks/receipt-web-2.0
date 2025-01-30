@@ -6,6 +6,30 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Handle Preview Button Click
+  const handlePreview = async () => {
+    try {
+      setLoading(true);
+      const pdfUrl = await onFinalize('preview');
+      setLoading(false);
+
+      if (!pdfUrl) {
+        throw new Error('Failed to generate PDF URL.');
+      }
+
+      // Open the PDF in a new tab/window
+      const newWindow = window.open(pdfUrl, '_blank');
+      if (!newWindow) {
+        // Handle popup blockers
+        alert('Tillåt popup-fönster för att visa PDF-förhandsgranskningen.');
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
+      setLoading(false);
+    }
+  };
+
   const handleConfirm = async () => {
     try {
       setLoading(true);
