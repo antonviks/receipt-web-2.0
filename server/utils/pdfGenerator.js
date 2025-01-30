@@ -42,11 +42,12 @@ async function generatePDF(receiptData, pdfPath) {
       const itemX = 50;
       const itemY = tableTop;
 
+      // Adjusted widths (bigger for ändamål, smaller for kommentar)
       const columnWidths = {
         datum: 60,
-        ändamål: 110,
+        ändamål: 140,
         kostnadsställe: 90,
-        kommentar: 120,
+        kommentar: 90,
         totalkostnad: 70,
         moms: 60,
       };
@@ -59,45 +60,58 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Ändamål', itemX + columnWidths.datum, itemY)
         .text('Kostnadsställe', itemX + columnWidths.datum + columnWidths.ändamål, itemY)
         .text('Kommentar', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe, itemY)
-        .text(
-          'Totalkostnad',
-          itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar,
-          itemY
-        )
-        .text(
-          'Moms',
-          itemX +
-            columnWidths.datum +
-            columnWidths.ändamål +
-            columnWidths.kostnadsställe +
-            columnWidths.kommentar +
-            columnWidths.totalkostnad,
-          itemY
-        );
+        .text('Totalkostnad', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar, itemY)
+        .text('Moms', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar + columnWidths.totalkostnad, itemY);
 
       // Draw Line Below Header
       doc.moveTo(itemX, tableTop + 15).lineTo(550, tableTop + 15).stroke();
 
-      // Populate Table Rows
       let rowY = tableTop + 25;
+
+      // For each receipt, measure heights for each column, then draw them
       receiptData.receipts.forEach((receipt) => {
-        doc
-          .font('Helvetica')
-          .fontSize(8)
-          // 'Datum'
-          .text(formatDate(receipt.date), itemX, rowY, {
+        const datumStr = formatDate(receipt.date);
+        const andamalStr = receipt.purpose;
+        const kostnadStr = (receipt.costCenter === 'Annat')
+          ? receipt.customCostCenter
+          : receipt.costCenter;
+        const kommentarStr = receipt.comment || '-';
+        const totalStr = `${parseFloat(receipt.totalCost).toFixed(2)} SEK`;
+        const momsStr = `${parseFloat(receipt.vat).toFixed(2)} SEK`;
+
+        // 1) Measure each text’s height within its column width
+        const datumHeight = doc.heightOfString(datumStr, { width: columnWidths.datum });
+        const andamalHeight = doc.heightOfString(andamalStr, { width: columnWidths.ändamål });
+        const kostnadHeight = doc.heightOfString(kostnadStr, { width: columnWidths.kostnadsställe });
+        const kommentarHeight = doc.heightOfString(kommentarStr, { width: columnWidths.kommentar });
+        const totalHeight = doc.heightOfString(totalStr, { width: columnWidths.totalkostnad });
+        const momsHeight = doc.heightOfString(momsStr, { width: columnWidths.moms });
+
+        // 2) Determine max row height
+        const rowHeight = Math.max(
+          datumHeight,
+          andamalHeight,
+          kostnadHeight,
+          kommentarHeight,
+          totalHeight,
+          momsHeight
+        );
+
+        // 3) Print columns at rowY
+        doc.fontSize(8).font('Helvetica')
+          // Datum
+          .text(datumStr, itemX, rowY, {
             width: columnWidths.datum,
             ellipsis: true,
           })
-          // 'Ändamål'
-          .text(receipt.purpose, itemX + columnWidths.datum, rowY, {
+          // Ändamål
+          .text(andamalStr, itemX + columnWidths.datum, rowY, {
             width: columnWidths.ändamål,
             ellipsis: true,
             align: 'left',
           })
-          // 'Kostnadsställe'
-          .text(
-            receipt.costCenter === 'Annat' ? receipt.customCostCenter : receipt.costCenter,
+          // Kostnadsställe
+          .text(kostnadStr,
             itemX + columnWidths.datum + columnWidths.ändamål,
             rowY,
             {
@@ -106,9 +120,8 @@ async function generatePDF(receiptData, pdfPath) {
               align: 'left',
             }
           )
-          // 'Kommentar'
-          .text(
-            receipt.comment || '-',
+          // Kommentar
+          .text(kommentarStr,
             itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe,
             rowY,
             {
@@ -117,29 +130,18 @@ async function generatePDF(receiptData, pdfPath) {
               align: 'left',
             }
           )
-          // 'Totalkostnad'
-          .text(
-            `${parseFloat(receipt.totalCost).toFixed(2)} SEK`,
-            itemX +
-              columnWidths.datum +
-              columnWidths.ändamål +
-              columnWidths.kostnadsställe +
-              columnWidths.kommentar,
+          // Totalkostnad
+          .text(totalStr,
+            itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar,
             rowY,
             {
               width: columnWidths.totalkostnad,
               ellipsis: true,
             }
           )
-          // 'Moms'
-          .text(
-            `${parseFloat(receipt.vat).toFixed(2)} SEK`,
-            itemX +
-              columnWidths.datum +
-              columnWidths.ändamål +
-              columnWidths.kostnadsställe +
-              columnWidths.kommentar +
-              columnWidths.totalkostnad,
+          // Moms
+          .text(momsStr,
+            itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar + columnWidths.totalkostnad,
             rowY,
             {
               width: columnWidths.moms,
@@ -147,12 +149,12 @@ async function generatePDF(receiptData, pdfPath) {
             }
           );
 
-        // Move to next row
-        rowY += 20;
-      }); // <-- ForEach block ends here
+        // 4) Move rowY by rowHeight + some spacing
+        rowY += rowHeight + 5;
+      });
 
       // Summary Section
-      const summaryY = rowY + 20;
+      const summaryY = rowY + 40;
       doc
         .font('Helvetica-Bold')
         .fontSize(12)
