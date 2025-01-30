@@ -12,7 +12,9 @@ import { useCookies } from 'react-cookie';
 function MultiStepForm() {
   const [step, setStep] = useState(0);
   const [personalInfo, setPersonalInfo] = useState({});
-  const [receipts, setReceipts] = useState([]);
+  const [receipts, setReceipts] = useState([
+    { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', vat: '', file: [] }
+  ]);
   const [paymentInfo, setPaymentInfo] = useState({});
   const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'paymentInfo']);
 
@@ -47,8 +49,10 @@ function MultiStepForm() {
 
       // Append files from receipts
       receipts.forEach((receipt, index) => {
-        if (receipt.file) {
-          formData.append('files', receipt.file); // 'files' is the field name expected by the server
+        if (receipt.files && receipt.files.length > 0) {
+          receipt.files.forEach((file) => {
+            formData.append('files', file);
+          });
         }
       });
 

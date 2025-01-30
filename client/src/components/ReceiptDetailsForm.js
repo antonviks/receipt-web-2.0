@@ -6,24 +6,42 @@ import heic2any from 'heic2any';
 
 function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['receipts']);
-
   useEffect(() => {
-    // Load receipts from cookies if available
-    if (cookies.receipts && Array.isArray(cookies.receipts)) {
-      setReceipts(cookies.receipts);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const receiptsWithoutFiles = receipts.map(({ file, ...rest }) => rest);
+    const receiptsWithoutFiles = receipts.map(({ files, ...rest }) => rest);
     setCookie('receipts', receiptsWithoutFiles, { path: '/' });
   }, [receipts, setCookie]);
+
+  // Main function to handle multiple file uploads
+  const handleFileChangeMulti = async (index, newFiles) => {
+    const updatedReceipts = receipts.map((receipt, i) => {
+      if (i === index) {
+        // Convert FileList to array
+        const filesArray = Array.from(newFiles);
+        // Merge them with existing array
+        return {
+          ...receipt,
+          files: [...(receipt.files || []), ...filesArray],
+        };
+      }
+      return receipt;
+    });
+
+    setReceipts(updatedReceipts);
+  };
 
   const handleAddReceipt = () => {
     setReceipts([
       ...receipts,
-      { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', vat: '', file: null },
+      {
+        date: '',
+        purpose: '',
+        costCenter: '',
+        customCostCenter: '',
+        comment: '',
+        totalCost: '',
+        vat: '',
+        files: [],
+      },
     ]);
   };
 
@@ -42,42 +60,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setReceipts(updatedReceipts);
   };
 
-  const handleFileChange = async (index, file) => {
-    let processedFile = file;
-
-    // Convert HEIC/HEIF to JPEG if necessary
-    if (file && (file.type === 'image/heic' || file.type === 'image/heif')) {
-      try {
-        const convertedBlob = await heic2any({
-          blob: file,
-          toType: 'image/jpeg',
-          quality: 0.8,
-        });
-        const convertedFile = new File([convertedBlob], `${file.name.split('.')[0]}.jpg`, { type: 'image/jpeg' });
-
-        const updatedReceipts = receipts.map((receipt, i) => {
-          if (i === index) {
-            return { ...receipt, file: convertedFile };
-          }
-          return receipt;
-        });
-        setReceipts(updatedReceipts);
-      } catch (error) {
-        console.error('Error converting HEIC/HEIF:', error);
-        alert('Ett fel inträffade vid konvertering av bilden. Försök igen.');
-        return;
-      }
-    } else {
-      const updatedReceipts = receipts.map((receipt, i) => {
-        if (i === index) {
-          return { ...receipt, file: file };
-        }
-        return receipt;
-      });
-      setReceipts(updatedReceipts);
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -94,7 +76,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
       }
     }
 
-    // Pass data to parent component
+    // Pass data to parent
     onNext(receipts);
   };
 
@@ -163,17 +145,15 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   <option value="Musik /25">Musik /25</option>
                   <option value="Teknik /26">Teknik /26</option>
                   <option value="Fastighet /41">Fastighet /41</option>
-                  {/* <option value="Annat">Annat</option> */}
+                  <option value="Annat">Annat</option>
                 </select>
               </div>
 
-              {/* Custom Cost Center Field (Conditional) */}
               {receipt.costCenter === 'Annat' && (
                 <div className="mb-3">
-                  <label htmlFor={`customCostCenter-${index}`} className="form-label">Ange kostnadsställe</label>
+                  <label className="form-label">Ange kostnadsställe</label>
                   <input
                     type="text"
-                    id={`customCostCenter-${index}`}
                     className="form-control"
                     value={receipt.customCostCenter}
                     onChange={(e) => handleChange(index, 'customCostCenter', e.target.value)}
@@ -185,10 +165,9 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
               {/* Comment Field */}
               <div className="mb-3">
-                <label htmlFor={`comment-${index}`} className="form-label">Valfri kommentar (bokföringskonto)</label>
+                <label className="form-label">Valfri kommentar (bokföringskonto)</label>
                 <input
                   type="text"
-                  id={`comment-${index}`}
                   className="form-control"
                   value={receipt.comment}
                   onChange={(e) => handleChange(index, 'comment', e.target.value)}
@@ -197,10 +176,9 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
               {/* Total Cost Field */}
               <div className="mb-3">
-                <label htmlFor={`totalCost-${index}`} className="form-label">Totalkostnad (SEK)</label>
+                <label className="form-label">Totalkostnad (SEK)</label>
                 <input
                   type="number"
-                  id={`totalCost-${index}`}
                   className="form-control"
                   value={receipt.totalCost}
                   onChange={(e) => handleChange(index, 'totalCost', e.target.value)}
@@ -213,10 +191,9 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
               {/* VAT Field */}
               <div className="mb-3">
-                <label htmlFor={`vat-${index}`} className="form-label">Moms (SEK)</label>
+                <label className="form-label">Moms (SEK)</label>
                 <input
                   type="number"
-                  id={`vat-${index}`}
                   className="form-control"
                   value={receipt.vat}
                   onChange={(e) => handleChange(index, 'vat', e.target.value)}
@@ -227,28 +204,46 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                 />
               </div>
 
-              {/* File Upload Field */}
+              {/* Multiple File Upload Field */}
               <div className="mb-3">
-                <label htmlFor={`file-${index}`} className="form-label">Ladda upp bild på kvitto</label>
+                <label htmlFor={`files-${index}`} className="form-label">Ladda upp filer (bilder eller PDF)</label>
                 <input
                   type="file"
-                  id={`file-${index}`}
+                  id={`files-${index}`}
                   className="form-control"
                   accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
-                  onChange={async (e) => {
-                    await handleFileChange(index, e.target.files[0] || null);
+                  multiple
+                  onChange={(e) => {
+                    handleFileChangeMulti(index, e.target.files);
                   }}
                 />
-                {receipt.file && (
+                {receipt.files && receipt.files.length > 0 && (
                   <div className="mt-2">
-                    <strong>Vald fil:</strong> {receipt.file.name}
-                    <button
-                      type="button"
-                      className="btn btn-link text-danger"
-                      onClick={() => handleFileChange(index, null)}
-                    >
-                      Ta bort
-                    </button>
+                    <strong>Valda filer:</strong>
+                    <ul>
+                      {receipt.files.map((f, fileIndex) => (
+                        <li key={fileIndex}>
+                          {f.name}
+                          <button
+                            type="button"
+                            className="btn btn-link text-danger"
+                            onClick={() => {
+                              const updatedReceipts = receipts.map((r, rIndex) => {
+                                if (rIndex === index) {
+                                  const newFileList = [...r.files];
+                                  newFileList.splice(fileIndex, 1);
+                                  return { ...r, files: newFileList };
+                                }
+                                return r;
+                              });
+                              setReceipts(updatedReceipts);
+                            }}
+                          >
+                            Ta bort
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

@@ -5,48 +5,38 @@ import { useCookies } from 'react-cookie';
 
 function PersonalInfoForm({ onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['personalInfo']);
-  const [date, setDate] = useState(cookies.personalInfo?.date || '');
+  const todayString = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState(cookies.personalInfo?.date || todayString);
+
   const [name, setName] = useState(cookies.personalInfo?.name || '');
+  const [email, setEmail] = useState(cookies.personalInfo?.email || ''); 
 
   useEffect(() => {
-    // Update state if cookies change
     if (cookies.personalInfo) {
       setDate(cookies.personalInfo.date);
       setName(cookies.personalInfo.name);
+      setEmail(cookies.personalInfo.email || '');
     }
   }, [cookies.personalInfo]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!date || !name) {
-      alert('Vänligen fyll i alla fält.');
+    if (!name) {
+      alert('Vänligen fyll i namn.');
       return;
     }
 
     // Save data to cookies
-    setCookie('personalInfo', { date, name }, { path: '/' });
+    setCookie('personalInfo', { date, name, email }, { path: '/' });
 
     // Pass data to parent
-    onNext({ date, name });
+    onNext({ date, name, email });
   };
 
   return (
     <div className="custom-container mt-5">
       <h2 className="text-center mb-4">Personlig Information</h2>
       <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label htmlFor="date" className="form-label">
-            Datum
-          </label>
-          <input
-            type="date"
-            className="form-control"
-            id="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-        </div>
         <div className="mb-3">
           <label htmlFor="name" className="form-label">
             Namn
@@ -61,6 +51,22 @@ function PersonalInfoForm({ onNext, onBack }) {
             required
           />
         </div>
+
+        {/* Moved Email from PaymentInfoForm */}
+        <div className="mb-3">
+          <label htmlFor="email" className="form-label">
+            E-postadress (Om du vill få en kopia)
+          </label>
+          <input
+            type="email"
+            className="form-control"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Ange din e-post (valfritt)"
+          />
+        </div>
+
         <div className="d-flex justify-content-between">
           {onBack && (
             <button

@@ -6,31 +6,6 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Handle Preview Button Click
-  const handlePreview = async () => {
-    try {
-      setLoading(true);
-      const pdfUrl = await onFinalize('preview');
-      setLoading(false);
-
-      if (!pdfUrl) {
-        throw new Error('Failed to generate PDF URL.');
-      }
-
-      // Open the PDF in a new tab/window
-      const newWindow = window.open(pdfUrl, '_blank');
-      if (!newWindow) {
-        // Handle popup blockers
-        alert('Tillåt popup-fönster för att visa PDF-förhandsgranskningen.');
-      }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
-      setLoading(false);
-    }
-  };
-
-  // Handle Confirm (Send Email) Button Click
   const handleConfirm = async () => {
     try {
       setLoading(true);
@@ -38,8 +13,7 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
       console.log('Email sent successfully.');
       setSuccess(true); 
       setLoading(false);
-      // Clear all cookies after successful submission
-      onReset();
+
     } catch (error) {
       console.error('Error sending email:', error);
       alert('Ett fel uppstod vid generering av utläggsblankett. Försök igen.');
@@ -88,11 +62,14 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
         // Success Message and Reset Button
         <div className="text-center">
           <h4 className="text-success mb-4">Utläggsblankett har skickats!</h4>
-          <button 
+          <p>Tack för din redovisning!</p>
+          <button
             className="btn btn-primary"
-            onClick={onReset}
+            onClick={() => {
+              onReset();
+            }}
           >
-            Logga ut
+            Gå tillbaka till början
           </button>
         </div>
       )}

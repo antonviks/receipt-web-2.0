@@ -3,7 +3,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const { PDFDocument: PDFLib, StandardFonts } = require('pdf-lib'); // Updated import statement
+const { PDFDocument: PDFLib, StandardFonts } = require('pdf-lib');
 
 async function generatePDF(receiptData, pdfPath) {
   return new Promise(async (resolve, reject) => {
@@ -22,7 +22,7 @@ async function generatePDF(receiptData, pdfPath) {
         console.error('Logo file not found at:', logoPath);
       }
 
-      // Top Right: "Utläggsblankett" with subtitle
+      // Top Right: "Utläggsblankett"
       doc
         .fontSize(16)
         .text('Utläggsblankett', 400, 50, { align: 'right' })
@@ -35,8 +35,7 @@ async function generatePDF(receiptData, pdfPath) {
         .text(`Datum: ${formatDate(receiptData.date)}`, 50, 120)
         .text(`Namn: ${receiptData.name}`, 50, 140);
 
-      // Spacer
-      doc.moveDown();
+      doc.moveDown(); // Spacer
 
       // Table Header
       const tableTop = 200;
@@ -60,8 +59,21 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Ändamål', itemX + columnWidths.datum, itemY)
         .text('Kostnadsställe', itemX + columnWidths.datum + columnWidths.ändamål, itemY)
         .text('Kommentar', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe, itemY)
-        .text('Totalkostnad', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar, itemY)
-        .text('Moms', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar + columnWidths.totalkostnad, itemY);
+        .text(
+          'Totalkostnad',
+          itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar,
+          itemY
+        )
+        .text(
+          'Moms',
+          itemX +
+            columnWidths.datum +
+            columnWidths.ändamål +
+            columnWidths.kostnadsställe +
+            columnWidths.kommentar +
+            columnWidths.totalkostnad,
+          itemY
+        );
 
       // Draw Line Below Header
       doc.moveTo(itemX, tableTop + 15).lineTo(550, tableTop + 15).stroke();
@@ -72,15 +84,72 @@ async function generatePDF(receiptData, pdfPath) {
         doc
           .font('Helvetica')
           .fontSize(8)
-          .text(formatDate(receipt.date), itemX, rowY)
-          .text(receipt.purpose, itemX + columnWidths.datum, rowY)
-          .text(receipt.costCenter === 'Annat' ? receipt.customCostCenter : receipt.costCenter, itemX + columnWidths.datum + columnWidths.ändamål, rowY)
-          .text(receipt.comment || '-', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe, rowY, { width: columnWidths.kommentar })
-          .text(`${parseFloat(receipt.totalCost).toFixed(2)} SEK`, itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar, rowY)
-          .text(`${parseFloat(receipt.vat).toFixed(2)} SEK`, itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar + columnWidths.totalkostnad, rowY);
+          // 'Datum'
+          .text(formatDate(receipt.date), itemX, rowY, {
+            width: columnWidths.datum,
+            ellipsis: true,
+          })
+          // 'Ändamål'
+          .text(receipt.purpose, itemX + columnWidths.datum, rowY, {
+            width: columnWidths.ändamål,
+            ellipsis: true,
+            align: 'left',
+          })
+          // 'Kostnadsställe'
+          .text(
+            receipt.costCenter === 'Annat' ? receipt.customCostCenter : receipt.costCenter,
+            itemX + columnWidths.datum + columnWidths.ändamål,
+            rowY,
+            {
+              width: columnWidths.kostnadsställe,
+              ellipsis: true,
+              align: 'left',
+            }
+          )
+          // 'Kommentar'
+          .text(
+            receipt.comment || '-',
+            itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe,
+            rowY,
+            {
+              width: columnWidths.kommentar,
+              ellipsis: true,
+              align: 'left',
+            }
+          )
+          // 'Totalkostnad'
+          .text(
+            `${parseFloat(receipt.totalCost).toFixed(2)} SEK`,
+            itemX +
+              columnWidths.datum +
+              columnWidths.ändamål +
+              columnWidths.kostnadsställe +
+              columnWidths.kommentar,
+            rowY,
+            {
+              width: columnWidths.totalkostnad,
+              ellipsis: true,
+            }
+          )
+          // 'Moms'
+          .text(
+            `${parseFloat(receipt.vat).toFixed(2)} SEK`,
+            itemX +
+              columnWidths.datum +
+              columnWidths.ändamål +
+              columnWidths.kostnadsställe +
+              columnWidths.kommentar +
+              columnWidths.totalkostnad,
+            rowY,
+            {
+              width: columnWidths.moms,
+              ellipsis: true,
+            }
+          );
 
+        // Move to next row
         rowY += 20;
-      });
+      }); // <-- ForEach block ends here
 
       // Summary Section
       const summaryY = rowY + 20;
@@ -107,8 +176,6 @@ async function generatePDF(receiptData, pdfPath) {
 
       // Footer Section
       const footerY = doc.page.height - doc.page.margins.bottom - 60;
-
-      // Draw Divider Above Footer
       const dividerY = footerY - 10;
       doc
         .moveTo(50, dividerY)
@@ -117,7 +184,6 @@ async function generatePDF(receiptData, pdfPath) {
         .strokeColor('black')
         .stroke();
 
-      // Draw the footer text below the divider
       doc
         .fontSize(8)
         .text('Korskyrkan Stockholm, Birger Jarlsgatan 66, 114 29 Stockholm', 50, footerY)
@@ -229,7 +295,7 @@ async function generatePDF(receiptData, pdfPath) {
       reject(error);
     }
   });
-}
+} 
 
 // Function to format dates in YYYY-MM-DD format
 function formatDate(date) {
