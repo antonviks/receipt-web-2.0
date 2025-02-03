@@ -39,14 +39,14 @@ async function generatePDF(receiptData, pdfPath) {
 
       // Table Header
       const tableTop = 200;
-      const itemX = 50;
+      const itemX = 60;
       const itemY = tableTop;
 
       // Adjusted widths (bigger for ändamål, smaller for kommentar)
       const columnWidths = {
         datum: 60,
         ändamål: 160,
-        kostnadsställe: 100,
+        kostnadsställe: 90,
         kommentar: 90,
         totalkostnad: 90,
       };
