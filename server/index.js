@@ -12,6 +12,15 @@ const receiptRoutes = require('./routes/receipts');
 const path = require('path');
 const fs = require('fs');
 
+if (process.env.NODE_ENV === 'development') {
+  require('dotenv').config({ path: './.env.development' });
+} else {
+  require('dotenv').config(); // loads default .env (production)
+}
+
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('MONGO_URI:', process.env.MONGO_URI);
+
 // Define directories
 const uploadsDir = path.join(__dirname, 'uploads');
 const outputDir = path.join(__dirname, 'output');
