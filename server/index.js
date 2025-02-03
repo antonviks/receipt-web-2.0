@@ -18,6 +18,7 @@ if (process.env.NODE_ENV === 'development') {
   require('dotenv').config(); // loads default .env (production)
 }
 
+console.log('REACT_APP_API_URL =', process.env.REACT_APP_API_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('MONGO_URI:', process.env.MONGO_URI);
 

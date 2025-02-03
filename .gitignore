@@ -47,7 +47,7 @@ node_modules/
 # dotenv environment variables file
 server/.env
 client/.env
-server/.env.development
+client/.env.development
 
 # Visual Studio Code
 .vscode/
