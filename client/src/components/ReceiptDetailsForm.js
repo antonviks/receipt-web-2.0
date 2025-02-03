@@ -121,7 +121,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   className="form-control"
                   value={receipt.purpose}
                   onChange={(e) => handleChange(index, 'purpose', e.target.value)}
-                  placeholder="Ange ändamål"
                   required
                 />
               </div>
@@ -157,7 +156,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                     className="form-control"
                     value={receipt.customCostCenter}
                     onChange={(e) => handleChange(index, 'customCostCenter', e.target.value)}
-                    placeholder="Ange kostnadsställe"
                     required
                   />
                 </div>
@@ -182,7 +180,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   className="form-control"
                   value={receipt.totalCost}
                   onChange={(e) => handleChange(index, 'totalCost', e.target.value)}
-                  placeholder="Ange totalkostnad"
                   required
                   min="0"
                   step="0.01"
