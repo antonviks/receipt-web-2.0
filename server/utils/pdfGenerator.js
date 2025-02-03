@@ -49,7 +49,6 @@ async function generatePDF(receiptData, pdfPath) {
         kostnadsställe: 90,
         kommentar: 90,
         totalkostnad: 70,
-        moms: 60,
       };
 
       // Draw Table Header
@@ -61,7 +60,6 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Kostnadsställe', itemX + columnWidths.datum + columnWidths.ändamål, itemY)
         .text('Kommentar', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe, itemY)
         .text('Totalkostnad', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar, itemY)
-        .text('Moms', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar + columnWidths.totalkostnad, itemY);
 
       // Draw Line Below Header
       doc.moveTo(itemX, tableTop + 15).lineTo(550, tableTop + 15).stroke();
@@ -84,7 +82,6 @@ async function generatePDF(receiptData, pdfPath) {
         const kostnadHeight = doc.heightOfString(kostnadStr, { width: columnWidths.kostnadsställe });
         const kommentarHeight = doc.heightOfString(kommentarStr, { width: columnWidths.kommentar });
         const totalHeight = doc.heightOfString(totalStr, { width: columnWidths.totalkostnad });
-        const momsHeight = doc.heightOfString(momsStr, { width: columnWidths.moms });
 
         // 2) Determine max row height
         const rowHeight = Math.max(
@@ -93,7 +90,6 @@ async function generatePDF(receiptData, pdfPath) {
           kostnadHeight,
           kommentarHeight,
           totalHeight,
-          momsHeight
         );
 
         // 3) Print columns at rowY
@@ -135,15 +131,6 @@ async function generatePDF(receiptData, pdfPath) {
             rowY,
             {
               width: columnWidths.totalkostnad,
-              ellipsis: true,
-            }
-          )
-          // Moms
-          .text(momsStr,
-            itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar + columnWidths.totalkostnad,
-            rowY,
-            {
-              width: columnWidths.moms,
               ellipsis: true,
             }
           );
