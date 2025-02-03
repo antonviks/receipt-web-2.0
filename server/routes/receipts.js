@@ -173,9 +173,6 @@ router.post('/process', upload.array('files'), async (req, res) => {
       if (!receipt.totalCost || isNaN(parseFloat(receipt.totalCost))) {
         return res.status(400).json({ error: `Totalkostnad krävs och måste vara ett nummer för redovisning ${i + 1}.` });
       }
-      if (!receipt.vat || isNaN(parseFloat(receipt.vat))) {
-        return res.status(400).json({ error: `Moms krävs och måste vara ett nummer för redovisning ${i + 1}.` });
-      }
 
       // Additional Validation: Ensure date is a valid date
       const dateObj = new Date(receipt.date);
@@ -190,18 +187,9 @@ router.post('/process', upload.array('files'), async (req, res) => {
       return sum + (isNaN(cost) ? 0 : cost);
     }, 0);
 
-    const totalVAT = receipts.reduce((sum, receipt) => {
-      const vat = parseFloat(receipt.vat);
-      return sum + (isNaN(vat) ? 0 : vat);
-    }, 0);
-
-    // Ensure totalAmount and totalVAT are valid
+    // Ensure totalAmount are valid
     if (isNaN(totalAmount)) {
       return res.status(400).json({ error: 'Totalt belopp är ogiltigt.' });
-    }
-
-    if (isNaN(totalVAT)) {
-      return res.status(400).json({ error: 'Total moms är ogiltig.' });
     }
 
     // Handle additional files associated with receipts
@@ -237,12 +225,10 @@ router.post('/process', upload.array('files'), async (req, res) => {
       receipts: receipts.map((receipt) => ({
         ...receipt,
         totalCost: parseFloat(receipt.totalCost) || 0,
-        vat: parseFloat(receipt.vat) || 0,
         // Store file details if uploaded
         imagePath: receipt.file ? receipt.file.path : null,
       })),
       totalAmount,
-      totalVAT,
       bankName: parsedPaymentInfo.bankName,
       clearingNumber: parsedPaymentInfo.clearingNumber,
       accountNumber: parsedPaymentInfo.accountNumber,

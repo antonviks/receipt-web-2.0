@@ -13,7 +13,7 @@ function MultiStepForm() {
   const [step, setStep] = useState(0);
   const [personalInfo, setPersonalInfo] = useState({});
   const [receipts, setReceipts] = useState([
-    { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', vat: '', file: [] }
+    { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', file: [] }
   ]);
   const [paymentInfo, setPaymentInfo] = useState({});
   const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'paymentInfo']);

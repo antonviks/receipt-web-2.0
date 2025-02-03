@@ -77,7 +77,6 @@ async function generatePDF(receiptData, pdfPath) {
           : receipt.costCenter;
         const kommentarStr = receipt.comment || '-';
         const totalStr = `${parseFloat(receipt.totalCost).toFixed(2)} SEK`;
-        const momsStr = `${parseFloat(receipt.vat).toFixed(2)} SEK`;
 
         // 1) Measure each text’s height within its column width
         const datumHeight = doc.heightOfString(datumStr, { width: columnWidths.datum });
@@ -162,7 +161,6 @@ async function generatePDF(receiptData, pdfPath) {
         .font('Helvetica')
         .fontSize(10)
         .text(`Totalt belopp: ${receiptData.totalAmount.toFixed(2)} SEK`, 50, summaryY + 25)
-        .text(`Moms: ${receiptData.totalVAT.toFixed(2)} SEK`, 50, summaryY + 45);
 
       // Payment Information Section 
       const paymentY = summaryY + 80;

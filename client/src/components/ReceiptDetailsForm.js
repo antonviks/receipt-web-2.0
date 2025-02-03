@@ -39,7 +39,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
         customCostCenter: '',
         comment: '',
         totalCost: '',
-        vat: '',
         files: [],
       },
     ]);
@@ -66,7 +65,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     // Basic Validation
     for (let i = 0; i < receipts.length; i++) {
       const receipt = receipts[i];
-      if (!receipt.date || !receipt.purpose || !receipt.costCenter || !receipt.totalCost || !receipt.vat) {
+      if (!receipt.date || !receipt.purpose || !receipt.costCenter || !receipt.totalCost) {
         alert(`Vänligen fyll i alla obligatoriska fält för redovisning ${i + 1}.`);
         return;
       }
@@ -180,21 +179,6 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   className="form-control"
                   value={receipt.totalCost}
                   onChange={(e) => handleChange(index, 'totalCost', e.target.value)}
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              {/* VAT Field */}
-              <div className="mb-3">
-                <label className="form-label">Moms (SEK)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={receipt.vat}
-                  onChange={(e) => handleChange(index, 'vat', e.target.value)}
-                  placeholder="Ange moms"
                   required
                   min="0"
                   step="0.01"

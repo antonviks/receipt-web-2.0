@@ -16,14 +16,12 @@ const receiptSchema = new mongoose.Schema({
       customCostCenter: { type: String }, // For "Annat" option
       comment: { type: String },
       totalCost: { type: Number, required: true },
-      vat: { type: Number, required: true },
       imagePath: { type: String }, // Path to the uploaded image or file
     },
   ],
 
   // Summary
   totalAmount: { type: Number, required: true },
-  totalVAT: { type: Number, required: true },
 
   // Payment Information
   bankName: { type: String },
