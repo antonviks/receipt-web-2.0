@@ -6,21 +6,49 @@ import heic2any from 'heic2any';
 
 function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['receipts']);
+
   useEffect(() => {
+    // Save receipts minus the actual file objects to cookies (to avoid huge cookie size)
     const receiptsWithoutFiles = receipts.map(({ files, ...rest }) => rest);
     setCookie('receipts', receiptsWithoutFiles, { path: '/' });
   }, [receipts, setCookie]);
 
-  // Main function to handle multiple file uploads
+  // Main function to handle multiple file uploads (with HEIC conversion)
   const handleFileChangeMulti = async (index, newFiles) => {
+    // Convert FileList to array
+    const incomingFiles = Array.from(newFiles);
+    const processedFiles = [];
+
+    for (const file of incomingFiles) {
+      // Check if it's HEIC/HEIF
+      if (file.type === 'image/heic' || file.type === 'image/heif') {
+        try {
+          // Convert to JPEG using heic2any
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.9
+          });
+          // Create a new File object with .jpg extension
+          const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+          const jpegFile = new File([convertedBlob], newName, { type: 'image/jpeg' });
+          processedFiles.push(jpegFile);
+        } catch (err) {
+          console.error('Error converting HEIC file:', err);
+          // (optional) skip or push original file
+        }
+      } else {
+        // Non-HEIC: just push as-is
+        processedFiles.push(file);
+      }
+    }
+
+    // Merge them with existing array
     const updatedReceipts = receipts.map((receipt, i) => {
       if (i === index) {
-        // Convert FileList to array
-        const filesArray = Array.from(newFiles);
-        // Merge them with existing array
         return {
           ...receipt,
-          files: [...(receipt.files || []), ...filesArray],
+          files: [...(receipt.files || []), ...processedFiles],
         };
       }
       return receipt;
@@ -111,7 +139,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                 />
               </div>
 
-              {/* Purpose Field */}
+              {/* Purpose Field (Ändamål) */}
               <div className="mb-3">
                 <label htmlFor={`purpose-${index}`} className="form-label">Ändamål</label>
                 <input
@@ -185,7 +213,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                 />
               </div>
 
-              {/* Multiple File Upload Field */}
+              {/* Multiple File Upload Field (includes HEIC) */}
               <div className="mb-3">
                 <label htmlFor={`files-${index}`} className="form-label">Ladda upp filer (bilder eller PDF)</label>
                 <input
@@ -194,9 +222,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   className="form-control"
                   accept="image/jpeg, image/png, image/heic, image/heif, application/pdf"
                   multiple
-                  onChange={(e) => {
-                    handleFileChangeMulti(index, e.target.files);
-                  }}
+                  onChange={(e) => handleFileChangeMulti(index, e.target.files)}
                 />
                 {receipt.files && receipt.files.length > 0 && (
                   <div className="mt-2">

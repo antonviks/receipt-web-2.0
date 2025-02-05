@@ -1,5 +1,4 @@
 // server/routes/receipts.js
-
 const express = require('express');
 const router = express.Router();
 const Receipt = require('../models/Receipt');
@@ -20,7 +19,6 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log(`Created uploads directory at ${uploadsDir}`);
 }
-
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
   console.log(`Created output directory at ${outputDir}`);
@@ -37,17 +35,17 @@ const storage = multer.diskStorage({
   }
 });
 
-// Multer instance with limits and file filtering
+// Multer instance with limits and file filtering (allows HEIC, HEIF, PDF, JPEG, PNG)
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       'image/jpeg',
       'image/png',
       'image/heic',
       'image/heif',
-      'application/pdf'
+      'application/pdf',
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -68,206 +66,133 @@ async function cleanupFiles(pdfPath, uploadedFiles) {
       console.warn(`Generated PDF not found: ${pdfPath}`);
     }
 
-    // Delete each uploaded file (files associated with receipts)
+    // Delete each uploaded file
     const deletePromises = uploadedFiles.map(async (file) => {
       const filePath = file.path;
       if (fs.existsSync(filePath)) {
         await fs.promises.unlink(filePath);
         console.log(`Deleted uploaded file: ${filePath}`);
       } else {
-        console.warn(`Uploaded file not found for deletion: ${filePath}`);
+        console.warn(`Uploaded file not found: ${filePath}`);
       }
     });
-
     await Promise.all(deletePromises);
-    console.log('All uploaded files have been deleted.');
 
-    // Optionally, ensure 'uploads' and 'output' directories are empty
-    await deleteAllFilesInDirectory(uploadsDir);
-    await deleteAllFilesInDirectory(outputDir);
-    console.log('Uploads and Output directories are now empty.');
+    console.log('All uploaded files have been deleted.');
   } catch (cleanupError) {
     console.error('Error during file cleanup:', cleanupError);
-    // Optionally, implement retry logic or notify administrators
   }
 }
 
-// Helper function to delete all files in a directory
-async function deleteAllFilesInDirectory(directoryPath) {
-  try {
-    const files = await fs.promises.readdir(directoryPath);
-    const deletePromises = files.map(file => fs.promises.unlink(path.join(directoryPath, file)));
-    await Promise.all(deletePromises);
-    console.log(`Deleted all files in directory: ${directoryPath}`);
-  } catch (error) {
-    // If the directory is already empty, ignore the error
-    if (error.code === 'ENOENT') {
-      console.warn(`Directory not found: ${directoryPath}`);
-    } else if (error.code !== 'ENOENT' && error.code !== 'EISDIR') {
-      console.error(`Error deleting files in directory ${directoryPath}:`, error);
-    }
-    // EISDIR error is thrown if trying to unlink a directory; ignore if that's the case
-  }
+// Helper function to format dates in YYYY-MM-DD
+function formatDate(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Unified Route for Processing (Preview and Finalization)
 router.post('/process', upload.array('files'), async (req, res) => {
   try {
     const { personalInfo, paymentInfo, action, receipts: receiptsJSON } = req.body;
-    let receipts = [];
-
-    // Parse receipts if it's a JSON string
-    if (typeof receiptsJSON === 'string') {
-      try {
-        receipts = JSON.parse(receiptsJSON);
-      } catch (parseError) {
-        return res.status(400).json({ error: 'Receipts must be a valid JSON string.' });
-      }
+    if (!personalInfo || !paymentInfo || !action) {
+      return res.status(400).json({ error: 'Missing required fields.' });
     }
 
-    // Input Validation
-    if (!personalInfo || typeof personalInfo !== 'string') {
-      return res.status(400).json({ error: 'Personal information is required and must be a JSON string.' });
-    }
-
-    if (!paymentInfo || typeof paymentInfo !== 'string') {
-      return res.status(400).json({ error: 'Payment information is required and must be a JSON string.' });
-    }
-
-    if (!action || (action !== 'preview' && action !== 'finalize')) {
-      return res.status(400).json({ error: 'Invalid action specified.' });
-    }
-
-    // Further parse personalInfo and paymentInfo
-    let parsedPersonalInfo, parsedPaymentInfo;
+    // Parse personalInfo, paymentInfo, receipts
+    let parsedPersonalInfo, parsedPaymentInfo, receipts;
     try {
       parsedPersonalInfo = JSON.parse(personalInfo);
       parsedPaymentInfo = JSON.parse(paymentInfo);
-    } catch (parseError) {
-      return res.status(400).json({ error: 'PersonalInfo and PaymentInfo must be valid JSON strings.' });
+      receipts = JSON.parse(receiptsJSON);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid JSON data.' });
     }
 
-    // Enhanced Data Validation
+    // Basic validation
     if (!parsedPersonalInfo.date || !parsedPersonalInfo.name) {
       return res.status(400).json({ error: 'Datum och Namn krävs.' });
     }
-
     if (!receipts || !Array.isArray(receipts) || receipts.length === 0) {
       return res.status(400).json({ error: 'Minst en redovisning krävs.' });
     }
 
+    // Validate each receipt
     for (let i = 0; i < receipts.length; i++) {
-      const receipt = receipts[i];
-      if (!receipt.date) {
-        return res.status(400).json({ error: `Datum krävs för redovisning ${i + 1}.` });
-      }
-      if (!receipt.purpose) {
-        return res.status(400).json({ error: `Ändamål krävs för redovisning ${i + 1}.` });
-      }
-      if (!receipt.costCenter) {
-        return res.status(400).json({ error: `Kostnadsställe krävs för redovisning ${i + 1}.` });
-      }
-      if (receipt.costCenter === 'Annat' && !receipt.customCostCenter) {
-        return res.status(400).json({ error: `Ange kostnadsställe för "Annat" alternativet för redovisning ${i + 1}.` });
-      }
-      if (!receipt.totalCost || isNaN(parseFloat(receipt.totalCost))) {
-        return res.status(400).json({ error: `Totalkostnad krävs och måste vara ett nummer för redovisning ${i + 1}.` });
-      }
-
-      // Additional Validation: Ensure date is a valid date
-      const dateObj = new Date(receipt.date);
-      if (isNaN(dateObj.getTime())) {
-        return res.status(400).json({ error: `Ogiltigt datum format för redovisning ${i + 1}.` });
+      const r = receipts[i];
+      if (!r.date || !r.purpose || !r.costCenter || !r.totalCost) {
+        return res.status(400).json({ error: `Saknas fält för redovisning ${i + 1}.` });
       }
     }
 
-    // Calculate summary
-    const totalAmount = receipts.reduce((sum, receipt) => {
-      const cost = parseFloat(receipt.totalCost);
-      return sum + (isNaN(cost) ? 0 : cost);
+    // Summation
+    const totalAmount = receipts.reduce((sum, r) => {
+      const val = parseFloat(r.totalCost) || 0;
+      return sum + val;
     }, 0);
 
-    // Ensure totalAmount are valid
-    if (isNaN(totalAmount)) {
-      return res.status(400).json({ error: 'Totalt belopp är ogiltigt.' });
-    }
-
-    // Handle additional files associated with receipts
+    // Associate the correct subset of files with each receipt
     const uploadedFiles = req.files || [];
-    console.log(`Received ${uploadedFiles.length} additional file(s):`);
-    uploadedFiles.forEach((file, index) => {
-      console.log(`File ${index + 1}:`);
-      console.log(`  Original Name: ${file.originalname}`);
-      console.log(`  Stored Path: ${file.path}`);
-      console.log(`  MIME Type: ${file.mimetype}`);
-    });
+    console.log(`Received ${uploadedFiles.length} files total.`);
 
-    // Associate uploaded files with receipts
-    receipts = receipts.map((receipt, index) => {
-      // Assuming files are uploaded in the same order as receipts
-      const file = uploadedFiles[index] || null;
+    let fileIndex = 0;
+    receipts = receipts.map((r) => {
+      const count = r.filesCount || 0; // from the client
+      const subset = uploadedFiles.slice(fileIndex, fileIndex + count);
+      fileIndex += count;
+
       return {
-        ...receipt,
-        file: file
-          ? {
-              path: file.path,
-              originalName: file.originalname,
-              mimeType: file.mimetype,
-            }
-          : null,
+        ...r,
+        totalCost: parseFloat(r.totalCost) || 0,
+        files: subset.map((f) => ({
+          path: f.path,
+          originalName: f.originalname,
+          mimetype: f.mimetype,
+        })),
       };
     });
 
-    // Create new Receipt document
+    // Create a new Receipt doc (optional)
     const newReceipt = new Receipt({
       date: parsedPersonalInfo.date,
       name: parsedPersonalInfo.name,
-      receipts: receipts.map((receipt) => ({
-        ...receipt,
-        totalCost: parseFloat(receipt.totalCost) || 0,
-        // Store file details if uploaded
-        imagePath: receipt.file ? receipt.file.path : null,
-      })),
+      receipts: receipts, // store them as is, if desired
       totalAmount,
       bankName: parsedPaymentInfo.bankName,
       clearingNumber: parsedPaymentInfo.clearingNumber,
       accountNumber: parsedPaymentInfo.accountNumber,
-      otherMethod: parsedPaymentInfo.otherMethod,
-      userEmail: parsedPaymentInfo.email || null, 
-      sessionID: req.session ? req.session.id : '', 
+      userEmail: parsedPaymentInfo.email || null,
+      sessionID: req.session ? req.session.id : '',
       createdAt: new Date(),
     });
 
     await newReceipt.save();
-    console.log('Receipt saved to database with ID:', newReceipt._id);
+    console.log('Receipt saved to DB, ID:', newReceipt._id);
 
-    // Format date for the PDF filename
+    // Generate PDF
     const formattedDate = formatDate(parsedPersonalInfo.date);
     const pdfFilename = `Utläggsblankett_${formattedDate}_${uuidv4()}.pdf`;
     const pdfPath = path.join(outputDir, pdfFilename);
 
-    console.log(`PDF will be saved at: ${pdfPath}`);
-
-    // Call the generatePDF function from pdfGenerator.js
     await generatePDF(newReceipt, pdfPath);
     console.log('PDF generated at:', pdfPath);
 
     if (action === 'preview') {
-      // Send back the URL to the PDF
+      // Return path so the client can open it in a new tab
       const pdfUrl = `/output/${pdfFilename}`;
       res.json({ pdfUrl });
     } else if (action === 'finalize') {
-      // Send Email, pass userEmail
+      // Email the PDF
       await sendEmail(newReceipt.name, pdfPath, pdfFilename, newReceipt.userEmail);
-      console.log('Email sent successfully.');
+      console.log('Email sent.');
 
-      // Cleanup: Delete PDF and Uploaded Files
+      // Cleanup
       await cleanupFiles(pdfPath, uploadedFiles);
-      console.log('Cleanup completed.');
-
       res.json({ message: 'PDF genererad och skickad via e-post.' });
     } else {
-      res.status(400).json({ error: 'Ogiltig åtgärd.' });
+      return res.status(400).json({ error: 'Ogiltig åtgärd.' });
     }
   } catch (error) {
     console.error('Error in /process:', error);
@@ -276,12 +201,3 @@ router.post('/process', upload.array('files'), async (req, res) => {
 });
 
 module.exports = router;
-
-// Helper function to format dates in YYYY-MM-DD format
-function formatDate(date) {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}

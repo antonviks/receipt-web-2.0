@@ -39,7 +39,7 @@ async function generatePDF(receiptData, pdfPath) {
 
       // Table Header
       const tableTop = 200;
-      const itemX = 60;
+      const itemX = 55;
       const itemY = tableTop;
 
       // Adjusted widths (bigger for ändamål, smaller for kommentar)
@@ -59,7 +59,7 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Ändamål', itemX + columnWidths.datum, itemY)
         .text('Kostnadsställe', itemX + columnWidths.datum + columnWidths.ändamål, itemY)
         .text('Kommentar', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe, itemY)
-        .text('Totalkostnad', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar, itemY)
+        .text('Totalkostnad', itemX + columnWidths.datum + columnWidths.ändamål + columnWidths.kostnadsställe + columnWidths.kommentar, itemY);
 
       // Draw Line Below Header
       doc.moveTo(itemX, tableTop + 15).lineTo(550, tableTop + 15).stroke();
@@ -67,7 +67,7 @@ async function generatePDF(receiptData, pdfPath) {
       let rowY = tableTop + 25;
 
       // For each receipt, measure heights for each column, then draw them
-      receiptData.receipts.forEach((receipt) => {
+      (receiptData.receipts || []).forEach((receipt) => {
         const datumStr = formatDate(receipt.date);
         const andamalStr = receipt.purpose;
         const kostnadStr = (receipt.costCenter === 'Annat')
@@ -89,7 +89,7 @@ async function generatePDF(receiptData, pdfPath) {
           andamalHeight,
           kostnadHeight,
           kommentarHeight,
-          totalHeight,
+          totalHeight
         );
 
         // 3) Print columns at rowY
@@ -147,9 +147,9 @@ async function generatePDF(receiptData, pdfPath) {
         .text('Sammanfattning', 50, summaryY)
         .font('Helvetica')
         .fontSize(10)
-        .text(`Totalt belopp: ${receiptData.totalAmount.toFixed(2)} SEK`, 50, summaryY + 25)
+        .text(`Totalt belopp: ${receiptData.totalAmount.toFixed(2)} SEK`, 50, summaryY + 25);
 
-      // Payment Information Section 
+      // Payment Information Section
       const paymentY = summaryY + 80;
       doc
         .font('Helvetica-Bold')
@@ -181,36 +181,36 @@ async function generatePDF(receiptData, pdfPath) {
       // Handle Additional Images and PDFs
       const uploadedPdfPaths = [];
 
+      // Now we handle each receipt's multiple files
       for (const receipt of receiptData.receipts) {
-        if (receipt.imagePath) {
-          const fileExtension = path.extname(receipt.imagePath).toLowerCase();
+        if (receipt.files && Array.isArray(receipt.files)) {
+          for (const fileObj of receipt.files) {
+            const fileExtension = path.extname(fileObj.path).toLowerCase();
 
-          if (fileExtension === '.pdf') {
-            // If the uploaded file is a PDF, collect its path to merge later
-            uploadedPdfPaths.push({ path: receipt.imagePath, purpose: receipt.purpose });
-          } else {
-            // It's an image, add a new page and embed the image
-            doc.addPage();
-
-            // Add 'ändamål' at the top of the page
-            doc
-              .font('Helvetica-Bold')
-              .fontSize(12)
-              .text(`Ändamål: ${receipt.purpose}`, 50, 50);
-
-            // Add the image below the 'ändamål' text
-            const imagePath = receipt.imagePath;
-
-            if (fs.existsSync(imagePath)) {
-              doc.image(imagePath, {
-                fit: [500, 600],
-                align: 'center',
-                valign: 'center',
-                y: 80,
-              });
-              console.log(`Embedded additional image: ${imagePath}`);
+            if (fileExtension === '.pdf') {
+              // If the uploaded file is a PDF, collect its path to merge later
+              uploadedPdfPaths.push({ path: fileObj.path, purpose: receipt.purpose });
             } else {
-              console.error(`Image path does not exist: ${imagePath}`);
+              // It's an image, add a new page and embed the image
+              doc.addPage();
+
+              // Add 'Ändamål' at the top of the page
+              doc
+                .font('Helvetica-Bold')
+                .fontSize(12)
+                .text(`Ändamål: ${receipt.purpose}`, 50, 50);
+
+              if (fs.existsSync(fileObj.path)) {
+                doc.image(fileObj.path, {
+                  fit: [500, 600],
+                  align: 'center',
+                  valign: 'center',
+                  y: 80,
+                });
+                console.log(`Embedded additional image: ${fileObj.path}`);
+              } else {
+                console.error(`Image path does not exist: ${fileObj.path}`);
+              }
             }
           }
         }
@@ -233,11 +233,11 @@ async function generatePDF(receiptData, pdfPath) {
               const pdfBytes = fs.readFileSync(pdfPath);
               const pdfDoc = await PDFLib.load(pdfBytes);
 
-              // Create a new page with 'ändamål' header
+              // Create a new page with 'Ändamål' header
               const newPage = mainPdfDoc.addPage();
               const { width, height } = newPage.getSize();
 
-              const helveticaBoldFont = await mainPdfDoc.embedFont(StandardFonts.HelveticaBold); // Use StandardFonts
+              const helveticaBoldFont = await mainPdfDoc.embedFont(StandardFonts.HelveticaBold);
               newPage.drawText(`Ändamål: ${purpose}`, {
                 x: 50,
                 y: height - 50,
@@ -282,13 +282,13 @@ async function generatePDF(receiptData, pdfPath) {
       reject(error);
     }
   });
-} 
+}
 
-// Function to format dates in YYYY-MM-DD format
+// Helper function to format dates in YYYY-MM-DD format
 function formatDate(date) {
   const d = new Date(date);
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+  const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }

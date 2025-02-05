@@ -42,22 +42,23 @@ function MultiStepForm() {
       // Create FormData
       const formData = new FormData();
 
+    // 1. Augment receipts with filesCount
+    receipts.forEach(r => {
+      r.filesCount = r.files ? r.files.length : 0;
+    });
       // Append personalInfo
       formData.append('personalInfo', JSON.stringify(personalInfo));
       formData.append('paymentInfo', JSON.stringify(paymentInfo));
       formData.append('receipts', JSON.stringify(receipts));
-
-      // Append files from receipts
-      receipts.forEach((receipt, index) => {
-        if (receipt.files && receipt.files.length > 0) {
-          receipt.files.forEach((file) => {
-            formData.append('files', file);
-          });
-        }
-      });
-
-      // Append action
       formData.append('action', action);
+
+
+    // 3. Append all files from all receipts
+    receipts.forEach(r => {
+      (r.files || []).forEach(file => {
+        formData.append('files', file);
+      });
+    });
 
       // Log FormData entries for debugging
       for (let pair of formData.entries()) {

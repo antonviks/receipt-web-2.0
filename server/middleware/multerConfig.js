@@ -28,11 +28,11 @@ if (process.env.NODE_ENV === 'production') {
 
 // File filter to accept images and PDFs
 const fileFilter = function (req, file, cb) {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf', 'image/heic','image/heif',];
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Endast JPEG, JPG, PNG och PDF-filer är tillåtna!'), false);
+    cb(new Error('Endast JPEG, JPG, HEIC, HEIF, PNG och PDF-filer är tillåtna!'), false);
   }
 };
 
