@@ -158,7 +158,9 @@ router.post('/process', upload.array('files'), async (req, res) => {
     const newReceipt = new Receipt({
       date: parsedPersonalInfo.date,
       name: parsedPersonalInfo.name,
-      receipts: receipts, // store them as is, if desired
+      // 'receipts' here is optional to store in DB if your schema supports it,
+      // but we definitely want it for the PDF. Some people store partial data, up to you.
+      receipts,
       totalAmount,
       bankName: parsedPaymentInfo.bankName,
       clearingNumber: parsedPaymentInfo.clearingNumber,
@@ -176,7 +178,15 @@ router.post('/process', upload.array('files'), async (req, res) => {
     const pdfFilename = `Utläggsblankett_${formattedDate}_${uuidv4()}.pdf`;
     const pdfPath = path.join(outputDir, pdfFilename);
 
-    await generatePDF(newReceipt, pdfPath);
+    // ====== OPTION A Fix: Merge the in-memory 'receipts' with the Mongoose doc ======
+    // Convert Mongoose doc to plain object, then override .receipts with our in-memory array
+    const pdfInput = {
+      ...newReceipt.toObject(),  // everything in the doc
+      receipts,                 // override with the array that has .files
+      totalAmount               // ensure the generator sees the correct sum
+    };
+
+    await generatePDF(pdfInput, pdfPath);
     console.log('PDF generated at:', pdfPath);
 
     if (action === 'preview') {
