@@ -5,16 +5,13 @@ import { useCookies } from 'react-cookie';
 
 function PersonalInfoForm({ onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['personalInfo']);
-  const todayString = new Date().toISOString().split('T')[0];
-  const [date, setDate] = useState(cookies.personalInfo?.date || todayString);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  const [name, setName] = useState(cookies.personalInfo?.name || '');
-  const [email, setEmail] = useState(cookies.personalInfo?.email || ''); 
-
+  // If you still want to restore name/email from cookies:
   useEffect(() => {
     if (cookies.personalInfo) {
-      setDate(cookies.personalInfo.date);
-      setName(cookies.personalInfo.name);
+      setName(cookies.personalInfo.name || '');
       setEmail(cookies.personalInfo.email || '');
     }
   }, [cookies.personalInfo]);
@@ -26,11 +23,12 @@ function PersonalInfoForm({ onNext, onBack }) {
       return;
     }
 
-    // Save data to cookies
-    setCookie('personalInfo', { date, name, email }, { path: '/' });
+    // Only store name and email in cookies
+    setCookie('personalInfo', { name, email }, { path: '/' });
 
-    // Pass data to parent
-    onNext({ date, name, email });
+    // Always pass "today" to the next step
+    const todayString = new Date().toISOString().split('T')[0];
+    onNext({ date: todayString, name, email });
   };
 
   return (
