@@ -7,7 +7,7 @@ function PasswordPrompt({ onSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (password === 'kors2024') {
+    if (password === 'kors') {
       onSuccess();
     } else {
       alert('Fel lösenord. Försök igen.');
