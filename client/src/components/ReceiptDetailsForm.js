@@ -141,7 +141,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
               {/* Purpose Field (Ändamål) */}
               <div className="mb-3">
-                <label htmlFor={`purpose-${index}`} className="form-label">Ändamål</label>
+                <label htmlFor={`purpose-${index}`} className="form-label">Ändamål - Beskriv vad, vem och varför</label>
                 <input
                   type="text"
                   id={`purpose-${index}`}
@@ -170,6 +170,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   <option value="UngaVuxna /24">UngaVuxna /24</option>
                   <option value="Musik /25">Musik /25</option>
                   <option value="Teknik /26">Teknik /26</option>
+                  <option value="Service /29">Service /29</option>
                   <option value="Fastighet /41">Fastighet /41</option>
                   <option value="Annat">Annat</option>
                 </select>
