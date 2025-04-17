@@ -191,7 +191,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
 
               {/* Comment Field */}
               <div className="mb-3">
-                <label className="form-label">Valfri kommentar (bokföringskonto)</label>
+                <label className="form-label">Valfri kommentar (t.ex. bokföringskonto)</label>
                 <input
                   type="text"
                   className="form-control"

@@ -165,7 +165,7 @@ router.post('/process', upload.array('files'), async (req, res) => {
       bankName: parsedPaymentInfo.bankName,
       clearingNumber: parsedPaymentInfo.clearingNumber,
       accountNumber: parsedPaymentInfo.accountNumber,
-      userEmail: parsedPaymentInfo.email || null,
+      userEmail: parsedPersonalInfo.email || null,
       sessionID: req.session ? req.session.id : '',
       createdAt: new Date(),
     });
@@ -195,7 +195,7 @@ router.post('/process', upload.array('files'), async (req, res) => {
       res.json({ pdfUrl });
     } else if (action === 'finalize') {
       // Email the PDF
-      await sendEmail(newReceipt.name, pdfPath, pdfFilename, newReceipt.userEmail);
+      await sendEmail(newReceipt.name, pdfPath, pdfFilename, parsedPersonalInfo.email);
       console.log('Email sent.');
 
       // Cleanup

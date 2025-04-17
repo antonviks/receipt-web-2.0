@@ -33,12 +33,11 @@ function PaymentInfoForm({ onNext, onBack }) {
     <div className="custom-container mt-5">
       <h2 className="text-center mb-4">Betalningsinformation</h2>
       <p className="mb-4">
-        Dessa uppgifter är valfria. Fyll bara i om du vill ha pengarna direkt till ditt bankkonto.
-      </p>
+      Fyll i bankuppgifter om det är första gången du lämnar in ett utlägg eller om du vill uppdatera din betalningsinformation.</p>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
           <label htmlFor="bankName" className="form-label">
-            Bankens namn (valfritt)
+            Bankens namn
           </label>
           <input
             type="text"
@@ -46,12 +45,11 @@ function PaymentInfoForm({ onNext, onBack }) {
             id="bankName"
             value={bankName}
             onChange={(e) => setBankName(e.target.value)}
-            placeholder="Ange bankens namn"
           />
         </div>
         <div className="mb-3">
           <label htmlFor="clearingNumber" className="form-label">
-            Clearing nummer (valfritt)
+            Clearing nummer
           </label>
           <input
             type="text"
@@ -59,12 +57,11 @@ function PaymentInfoForm({ onNext, onBack }) {
             id="clearingNumber"
             value={clearingNumber}
             onChange={(e) => setClearingNumber(e.target.value)}
-            placeholder="Ange clearing nummer"
           />
         </div>
         <div className="mb-3">
           <label htmlFor="accountNumber" className="form-label">
-            Kontonummer (valfritt)
+            Kontonummer
           </label>
           <input
             type="text"
@@ -72,7 +69,6 @@ function PaymentInfoForm({ onNext, onBack }) {
             id="accountNumber"
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value)}
-            placeholder="Ange kontonummer"
           />
         </div>
 
