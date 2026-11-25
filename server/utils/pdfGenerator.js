@@ -9,7 +9,8 @@ async function generatePDF(receiptData, pdfPath) {
   return new Promise(async (resolve, reject) => {
     try {
       console.log('Starting PDF generation...');
-      const tempPdfPath = path.join(__dirname, '../output/temp.pdf');
+      // Temp file next to the final PDF, so concurrent requests never share it
+      const tempPdfPath = `${pdfPath}.tmp`;
       const doc = new PDFDocument({ margin: 50 });
       const writeStream = fs.createWriteStream(tempPdfPath);
       doc.pipe(writeStream);

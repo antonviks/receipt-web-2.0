@@ -5,27 +5,24 @@ import { useCookies } from 'react-cookie';
 
 function PaymentInfoForm({ onNext, onBack }) {
   const [cookies, setCookie] = useCookies(['paymentInfo']);
+  // Only the bank name is remembered in the browser. Clearing and account
+  // numbers are never stored in a cookie.
   const [bankName, setBankName] = useState(cookies.paymentInfo?.bankName || '');
-  const [clearingNumber, setClearingNumber] = useState(cookies.paymentInfo?.clearingNumber || '');
-  const [accountNumber, setAccountNumber] = useState(cookies.paymentInfo?.accountNumber || '');
+  const [clearingNumber, setClearingNumber] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
 
+  // Remove account details saved in the cookie by earlier versions of the app
   useEffect(() => {
-    if (cookies.paymentInfo) {
-      setBankName(cookies.paymentInfo.bankName);
-      setClearingNumber(cookies.paymentInfo.clearingNumber);
-      setAccountNumber(cookies.paymentInfo.accountNumber);
+    const saved = cookies.paymentInfo;
+    if (saved && (saved.clearingNumber || saved.accountNumber)) {
+      setCookie('paymentInfo', { bankName: saved.bankName || '' }, { path: '/' });
     }
-  }, [cookies.paymentInfo]);
+  }, [cookies.paymentInfo, setCookie]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     // No validation necessary since they are optional
-    setCookie('paymentInfo', { 
-      bankName, 
-      clearingNumber, 
-      accountNumber,
-    }, { path: '/' });
-
+    setCookie('paymentInfo', { bankName }, { path: '/' });
     onNext({ bankName, clearingNumber, accountNumber });
   };
 

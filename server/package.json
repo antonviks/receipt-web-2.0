@@ -12,25 +12,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "basic-auth": "^2.0.1",
-    "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "express-session": "^1.18.0",
     "googleapis": "^144.0.0",
-    "heic2any": "^0.0.4",
-    "mime-types": "^2.1.35",
-    "mongodb": "^6.9.0",
-    "mongoose": "^8.7.1",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3",
     "nodemailer": "^6.9.15",
     "pdf-lib": "^1.17.1",
-    "pdfkit": "^0.15.0",
-    "react-cookie": "^7.2.0",
-    "sharp": "^0.33.5",
-    "uuid": "^10.0.0"
+    "pdfkit": "^0.15.0"
   },
   "description": ""
 }

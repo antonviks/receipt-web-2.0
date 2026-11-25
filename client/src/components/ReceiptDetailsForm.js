@@ -1,11 +1,13 @@
 // client/src/components/ReceiptDetailsForm.js
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCookies } from 'react-cookie';
 import heic2any from 'heic2any';
+import compressImage from '../utils/compressImage';
 
 function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
-  const [cookies, setCookie] = useCookies(['receipts']);
+  const [, setCookie] = useCookies(['receipts']);
+  const [processingFiles, setProcessingFiles] = useState(false);
 
   useEffect(() => {
     // Save receipts minus the actual file objects to cookies (to avoid huge cookie size)
@@ -13,11 +15,12 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setCookie('receipts', receiptsWithoutFiles, { path: '/' });
   }, [receipts, setCookie]);
 
-  // Main function to handle multiple file uploads (with HEIC conversion)
+  // Main function to handle multiple file uploads (HEIC conversion + photo compression)
   const handleFileChangeMulti = async (index, newFiles) => {
     // Convert FileList to array
     const incomingFiles = Array.from(newFiles);
     const processedFiles = [];
+    setProcessingFiles(true);
 
     for (const file of incomingFiles) {
       // Check if it's HEIC/HEIF
@@ -32,29 +35,26 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
           // Create a new File object with .jpg extension
           const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
           const jpegFile = new File([convertedBlob], newName, { type: 'image/jpeg' });
-          processedFiles.push(jpegFile);
+          processedFiles.push(await compressImage(jpegFile));
         } catch (err) {
           console.error('Error converting HEIC file:', err);
-          // (optional) skip or push original file
+          alert(`Kunde inte läsa bilden ${file.name}. Prova att spara den som JPEG och ladda upp igen.`);
         }
       } else {
-        // Non-HEIC: just push as-is
-        processedFiles.push(file);
+        // JPEG/PNG photos are shrunk; PDFs are passed through unchanged
+        processedFiles.push(await compressImage(file));
       }
     }
+    setProcessingFiles(false);
 
-    // Merge them with existing array
-    const updatedReceipts = receipts.map((receipt, i) => {
-      if (i === index) {
-        return {
-          ...receipt,
-          files: [...(receipt.files || []), ...processedFiles],
-        };
-      }
-      return receipt;
-    });
-
-    setReceipts(updatedReceipts);
+    // Merge them with the latest state (the user may have edited other fields meanwhile)
+    setReceipts((current) =>
+      current.map((receipt, i) =>
+        i === index
+          ? { ...receipt, files: [...(receipt.files || []), ...processedFiles] }
+          : receipt
+      )
+    );
   };
 
   const handleAddReceipt = () => {
@@ -225,6 +225,9 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
                   multiple
                   onChange={(e) => handleFileChangeMulti(index, e.target.files)}
                 />
+                {processingFiles && (
+                  <div className="form-text">Förbereder bilder…</div>
+                )}
                 {receipt.files && receipt.files.length > 0 && (
                   <div className="mt-2">
                     <strong>Valda filer:</strong>
@@ -272,7 +275,7 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
               Tillbaka
             </button>
           )}
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={processingFiles}>
             Nästa
           </button>
         </div>

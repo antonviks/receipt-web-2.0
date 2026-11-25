@@ -1,90 +1,84 @@
 // server/routes/receipts.js
+
 const express = require('express');
-const router = express.Router();
-const Receipt = require('../models/Receipt');
-const path = require('path');
-const multer = require('multer');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
+const multer = require('multer');
 const generatePDF = require('../utils/pdfGenerator');
 const sendEmail = require('../utils/emailSender');
-const { v4: uuidv4 } = require('uuid');
-require('dotenv').config();
+const { createRateLimiter } = require('../middleware/auth');
 
-// Define directories
-const uploadsDir = path.join(__dirname, '../uploads');
-const outputDir = path.join(__dirname, '../output');
+const router = express.Router();
 
-// Ensure directories exist
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log(`Created uploads directory at ${uploadsDir}`);
-}
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
-  console.log(`Created output directory at ${outputDir}`);
-}
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
+const MAX_FILES = 30;
 
-// Configure Multer with Disk Storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = `${Date.now()}-${uuidv4()}-${file.originalname}`;
-    cb(null, uniqueSuffix);
-  }
-});
+// HEIC/HEIF photos are converted to JPEG in the browser before upload,
+// so the server only needs to accept formats the PDF generator can embed.
+const FILE_EXTENSIONS = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'application/pdf': '.pdf',
+};
 
-// Multer instance with limits and file filtering (allows HEIC, HEIF, PDF, JPEG, PNG)
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/heic',
-      'image/heif',
-      'application/pdf',
-    ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Endast JPEG, PNG, HEIC, HEIF eller PDF-filer är tillåtna.'));
-    }
-  }
-});
-
-// Function to clean up files (PDF and uploaded images/PDFs)
-async function cleanupFiles(pdfPath, uploadedFiles) {
+// Every request gets its own temporary folder. Uploads and the generated PDF
+// live there, and the whole folder is deleted when the response ends,
+// whether the request succeeded, failed or was aborted.
+async function createWorkDir(req, res, next) {
   try {
-    // Delete the generated PDF
-    if (fs.existsSync(pdfPath)) {
-      await fs.promises.unlink(pdfPath);
-      console.log(`Deleted PDF: ${pdfPath}`);
-    } else {
-      console.warn(`Generated PDF not found: ${pdfPath}`);
-    }
-
-    // Delete each uploaded file
-    const deletePromises = uploadedFiles.map(async (file) => {
-      const filePath = file.path;
-      if (fs.existsSync(filePath)) {
-        await fs.promises.unlink(filePath);
-        console.log(`Deleted uploaded file: ${filePath}`);
-      } else {
-        console.warn(`Uploaded file not found: ${filePath}`);
-      }
+    req.workDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'korsredo-'));
+    res.on('close', () => {
+      fs.promises
+        .rm(req.workDir, { recursive: true, force: true })
+        .catch((err) => console.error('Failed to delete temp folder:', err));
     });
-    await Promise.all(deletePromises);
-
-    console.log('All uploaded files have been deleted.');
-  } catch (cleanupError) {
-    console.error('Error during file cleanup:', cleanupError);
+    next();
+  } catch (err) {
+    next(err);
   }
 }
 
-// Helper function to format dates in YYYY-MM-DD
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, req.workDir),
+    filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}${FILE_EXTENSIONS[file.mimetype]}`),
+  }),
+  limits: { fileSize: MAX_FILE_SIZE, files: MAX_FILES },
+  fileFilter: (req, file, cb) => {
+    if (FILE_EXTENSIONS[file.mimetype]) return cb(null, true);
+    const err = new Error('Endast JPEG, PNG, HEIC eller PDF-filer är tillåtna.');
+    err.isUserError = true;
+    return cb(err);
+  },
+});
+
+// Turn upload errors into clear 400 responses instead of a generic 500
+function handleUpload(req, res, next) {
+  upload.array('files', MAX_FILES)(req, res, (err) => {
+    if (!err) return next();
+    let message = 'Uppladdningen misslyckades. Försök igen.';
+    if (err.code === 'LIMIT_FILE_SIZE') message = 'En av filerna är större än 10 MB.';
+    else if (err.code === 'LIMIT_FILE_COUNT') message = `Max ${MAX_FILES} filer per inlämning.`;
+    else if (err.isUserError) message = err.message;
+    else console.error('Upload error:', err);
+    return res.status(400).json({ error: message });
+  });
+}
+
+// Max 60 previews/submissions per hour per IP
+const processLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, limit: 60 });
+function limitProcessing(req, res, next) {
+  if (processLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: 'För många förfrågningar. Försök igen senare.' });
+  }
+  processLimiter.hit(req.ip);
+  return next();
+}
+
+// Format dates as YYYY-MM-DD
 function formatDate(date) {
   const d = new Date(date);
   const year = d.getFullYear();
@@ -93,33 +87,34 @@ function formatDate(date) {
   return `${year}-${month}-${day}`;
 }
 
-// Unified Route for Processing (Preview and Finalization)
-router.post('/process', upload.array('files'), async (req, res) => {
+// Unified route for preview and finalization
+router.post('/process', limitProcessing, createWorkDir, handleUpload, async (req, res) => {
   try {
     const { personalInfo, paymentInfo, action, receipts: receiptsJSON } = req.body;
     if (!personalInfo || !paymentInfo || !action) {
-      return res.status(400).json({ error: 'Missing required fields.' });
+      return res.status(400).json({ error: 'Obligatoriska fält saknas.' });
+    }
+    if (action !== 'preview' && action !== 'finalize') {
+      return res.status(400).json({ error: 'Ogiltig åtgärd.' });
     }
 
-    // Parse personalInfo, paymentInfo, receipts
-    let parsedPersonalInfo, parsedPaymentInfo, receipts;
+    let parsedPersonalInfo;
+    let parsedPaymentInfo;
+    let receipts;
     try {
       parsedPersonalInfo = JSON.parse(personalInfo);
       parsedPaymentInfo = JSON.parse(paymentInfo);
       receipts = JSON.parse(receiptsJSON);
     } catch (err) {
-      return res.status(400).json({ error: 'Invalid JSON data.' });
+      return res.status(400).json({ error: 'Ogiltig data.' });
     }
 
-    // Basic validation
     if (!parsedPersonalInfo.date || !parsedPersonalInfo.name) {
       return res.status(400).json({ error: 'Datum och Namn krävs.' });
     }
-    if (!receipts || !Array.isArray(receipts) || receipts.length === 0) {
+    if (!Array.isArray(receipts) || receipts.length === 0) {
       return res.status(400).json({ error: 'Minst en redovisning krävs.' });
     }
-
-    // Validate each receipt
     for (let i = 0; i < receipts.length; i++) {
       const r = receipts[i];
       if (!r.date || !r.purpose || !r.costCenter || !r.totalCost) {
@@ -127,86 +122,66 @@ router.post('/process', upload.array('files'), async (req, res) => {
       }
     }
 
-    // Summation
-    const totalAmount = receipts.reduce((sum, r) => {
-      const val = parseFloat(r.totalCost) || 0;
-      return sum + val;
-    }, 0);
-
-    // Associate the correct subset of files with each receipt
+    // Match uploaded files to receipts using the per-receipt count from the client
     const uploadedFiles = req.files || [];
-    console.log(`Received ${uploadedFiles.length} files total.`);
+    const counts = receipts.map((r) =>
+      Number.isInteger(r.filesCount) && r.filesCount > 0 ? r.filesCount : 0
+    );
+    if (counts.reduce((a, b) => a + b, 0) !== uploadedFiles.length) {
+      return res.status(400).json({ error: 'Filerna matchar inte redovisningarna. Försök igen.' });
+    }
 
     let fileIndex = 0;
-    receipts = receipts.map((r) => {
-      const count = r.filesCount || 0; // from the client
-      const subset = uploadedFiles.slice(fileIndex, fileIndex + count);
-      fileIndex += count;
-
+    receipts = receipts.map((r, i) => {
+      const subset = uploadedFiles.slice(fileIndex, fileIndex + counts[i]);
+      fileIndex += counts[i];
       return {
-        ...r,
+        date: r.date,
+        purpose: r.purpose,
+        costCenter: r.costCenter,
+        customCostCenter: r.customCostCenter,
+        comment: r.comment,
         totalCost: parseFloat(r.totalCost) || 0,
-        files: subset.map((f) => ({
-          path: f.path,
-          originalName: f.originalname,
-          mimetype: f.mimetype,
-        })),
+        files: subset.map((f) => ({ path: f.path, mimetype: f.mimetype })),
       };
     });
 
-    // Create a new Receipt doc (optional)
-    const newReceipt = new Receipt({
+    const totalAmount = receipts.reduce((sum, r) => sum + r.totalCost, 0);
+
+    // Nothing is stored: the data only goes into the PDF
+    const pdfInput = {
       date: parsedPersonalInfo.date,
       name: parsedPersonalInfo.name,
-      // 'receipts' here is optional to store in DB if your schema supports it,
-      // but we definitely want it for the PDF. Some people store partial data, up to you.
       receipts,
       totalAmount,
       bankName: parsedPaymentInfo.bankName,
       clearingNumber: parsedPaymentInfo.clearingNumber,
       accountNumber: parsedPaymentInfo.accountNumber,
-      userEmail: parsedPersonalInfo.email || null,
-      sessionID: req.session ? req.session.id : '',
-      createdAt: new Date(),
-    });
-
-    await newReceipt.save();
-    console.log('Receipt saved to DB, ID:', newReceipt._id);
-
-    // Generate PDF
-    const formattedDate = formatDate(parsedPersonalInfo.date);
-    const pdfFilename = `Utläggsblankett_${formattedDate}_${uuidv4()}.pdf`;
-    const pdfPath = path.join(outputDir, pdfFilename);
-
-    // ====== OPTION A Fix: Merge the in-memory 'receipts' with the Mongoose doc ======
-    // Convert Mongoose doc to plain object, then override .receipts with our in-memory array
-    const pdfInput = {
-      ...newReceipt.toObject(),  // everything in the doc
-      receipts,                 // override with the array that has .files
-      totalAmount               // ensure the generator sees the correct sum
     };
 
+    const pdfFilename = `Utläggsblankett_${formatDate(parsedPersonalInfo.date)}_${crypto.randomUUID()}.pdf`;
+    const pdfPath = path.join(req.workDir, pdfFilename);
     await generatePDF(pdfInput, pdfPath);
-    console.log('PDF generated at:', pdfPath);
 
     if (action === 'preview') {
-      // Return path so the client can open it in a new tab
-      const pdfUrl = `/output/${pdfFilename}`;
-      res.json({ pdfUrl });
-    } else if (action === 'finalize') {
-      // Email the PDF
-      await sendEmail(newReceipt.name, pdfPath, pdfFilename, parsedPersonalInfo.email);
-      console.log('Email sent.');
-
-      // Cleanup
-      await cleanupFiles(pdfPath, uploadedFiles);
-      res.json({ message: 'PDF genererad och skickad via e-post.' });
-    } else {
-      return res.status(400).json({ error: 'Ogiltig åtgärd.' });
+      // Send the PDF itself; it is never stored or served from a public URL
+      const pdf = await fs.promises.readFile(pdfPath);
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="forhandsgranskning.pdf"',
+        'Cache-Control': 'no-store',
+      });
+      return res.send(pdf);
     }
+
+    await sendEmail(parsedPersonalInfo.name, pdfPath, pdfFilename, parsedPersonalInfo.email);
+    console.log('Utläggsblankett sent by email.');
+    return res.json({ message: 'PDF genererad och skickad via e-post.' });
   } catch (error) {
     console.error('Error in /process:', error);
-    res.status(500).json({ error: error.message });
+    return res
+      .status(500)
+      .json({ error: 'Något gick fel när blanketten skulle skapas. Försök igen.' });
   }
 });
 
