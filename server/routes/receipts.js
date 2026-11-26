@@ -87,6 +87,17 @@ function formatDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+// Make a name safe for a file name: "Anna-Karin Ö'Berg" -> "Anna-Karin_Ö'Berg".
+// Keeps letters (incl. åäö), digits, - and '; everything else becomes _.
+function safeFilenamePart(value) {
+  const cleaned = String(value)
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{N}'-]+/gu, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60);
+  return cleaned || 'okänd';
+}
+
 // Unified route for preview and finalization
 router.post('/process', limitProcessing, createWorkDir, handleUpload, async (req, res) => {
   try {
@@ -159,8 +170,9 @@ router.post('/process', limitProcessing, createWorkDir, handleUpload, async (req
       accountNumber: parsedPaymentInfo.accountNumber,
     };
 
-    const pdfFilename = `Utläggsblankett_${formatDate(parsedPersonalInfo.date)}_${crypto.randomUUID()}.pdf`;
-    const pdfPath = path.join(req.workDir, pdfFilename);
+    // On disk the PDF gets a random name; the email attachment gets a readable one
+    const pdfPath = path.join(req.workDir, `${crypto.randomUUID()}.pdf`);
+    const pdfFilename = `Utläggsblankett_${formatDate(parsedPersonalInfo.date)}_${safeFilenamePart(parsedPersonalInfo.name)}.pdf`;
     await generatePDF(pdfInput, pdfPath);
 
     if (action === 'preview') {
