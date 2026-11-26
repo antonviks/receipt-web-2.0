@@ -65,8 +65,15 @@ app.use(express.static(path.join(__dirname, '../client/build')));
 
 // 6. Last-resort error handler: log details, show a generic message
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
   if (res.headersSent) return next(err);
+  // Client errors from the JSON body parser (too large, malformed JSON)
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Förfrågan är för stor.' });
+  }
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Ogiltig data.' });
+  }
+  console.error('Unhandled error:', err);
   return res.status(500).json({ error: 'Något gick fel. Försök igen.' });
 });
 

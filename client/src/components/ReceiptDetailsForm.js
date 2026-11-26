@@ -2,8 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { useCookies } from 'react-cookie';
-import heic2any from 'heic2any';
 import compressImage from '../utils/compressImage';
+
+// Some browsers (e.g. Chrome on Windows/Android) report HEIC files with an
+// empty type, so check the file extension too.
+function isHeicFile(file) {
+  return /^image\/hei[cf]/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+}
+
+// The HEIC decoder is large, so it is only downloaded when someone picks a HEIC photo
+async function convertHeicToJpeg(file) {
+  const { heicTo } = await import('heic-to');
+  const blob = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
+  const newName = file.name.replace(/\.(heic|heif)$/i, '') + '.jpg';
+  return new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() });
+}
 
 function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
   const [, setCookie] = useCookies(['receipts']);
@@ -23,18 +36,10 @@ function ReceiptDetailsForm({ receipts, setReceipts, onNext, onBack }) {
     setProcessingFiles(true);
 
     for (const file of incomingFiles) {
-      // Check if it's HEIC/HEIF
-      if (file.type === 'image/heic' || file.type === 'image/heif') {
+      if (isHeicFile(file)) {
         try {
-          // Convert to JPEG using heic2any
-          const convertedBlob = await heic2any({
-            blob: file,
-            toType: 'image/jpeg',
-            quality: 0.9
-          });
-          // Create a new File object with .jpg extension
-          const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-          const jpegFile = new File([convertedBlob], newName, { type: 'image/jpeg' });
+          // iPhone photos: convert to JPEG, then shrink like any other photo
+          const jpegFile = await convertHeicToJpeg(file);
           processedFiles.push(await compressImage(jpegFile));
         } catch (err) {
           console.error('Error converting HEIC file:', err);
