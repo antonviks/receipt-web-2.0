@@ -8,39 +8,52 @@ function FinalizeForm({ onFinalize, onBack, onReset }) {
 
   // Handle Preview Button Click
   const handlePreview = async () => {
+    // Open the tab right away, inside the click. Phones block tabs opened
+    // after waiting for the server.
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) {
+      try {
+        previewWindow.document.write(
+          '<p style="font-family:sans-serif;padding:1rem">Skapar förhandsgranskning…</p>'
+        );
+      } catch {
+        // not important
+      }
+    }
+
+    setLoading(true);
     try {
-      setLoading(true);
       const pdfUrl = await onFinalize('preview');
-      setLoading(false);
-
-      if (!pdfUrl) {
-        throw new Error('Failed to generate PDF URL.');
+      if (previewWindow) {
+        previewWindow.location.href = pdfUrl;
+      } else {
+        // Popup blocked: download the preview instead
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = 'forhandsgranskning.pdf';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }
-
-      // Open the PDF in a new tab/window
-      const newWindow = window.open(pdfUrl, '_blank');
-      if (!newWindow) {
-        // Handle popup blockers
-        alert('Tillåt popup-fönster för att visa PDF-förhandsgranskningen.');
-      }
+      setTimeout(() => URL.revokeObjectURL(pdfUrl), 60 * 1000);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Ett fel uppstod vid förhandsgranskning av PDF. Försök igen.');
+      if (previewWindow) previewWindow.close();
+      if (!error.handled) alert(error.message);
+    } finally {
       setLoading(false);
     }
   };
 
   const handleConfirm = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const message = await onFinalize('finalize'); 
-      console.log('Email sent successfully.');
-      setSuccess(true); 
-      setLoading(false);
-
+      await onFinalize('finalize');
+      setSuccess(true);
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('Ett fel uppstod vid generering av utläggsblankett. Försök igen.');
+      if (!error.handled) alert(error.message);
+    } finally {
       setLoading(false);
     }
   };

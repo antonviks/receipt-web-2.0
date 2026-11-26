@@ -1,6 +1,6 @@
 // client/src/components/MultiStepForm.js
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PasswordPrompt from './PasswordPrompt';
 import PersonalInfoForm from './PersonalInfoForm';
 import ReceiptDetailsForm from './ReceiptDetailsForm';
@@ -9,17 +9,52 @@ import FinalizeForm from './FinalizeForm';
 import axios from 'axios';
 import { useCookies } from 'react-cookie';
 
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || '',
+  withCredentials: true,
+});
+
+const emptyReceipt = () => ({
+  date: '',
+  purpose: '',
+  costCenter: '',
+  customCostCenter: '',
+  comment: '',
+  totalCost: '',
+  files: [],
+});
+
+// Read the server's error message, also when the response body is a Blob
+async function getErrorMessage(error, fallback) {
+  let data = error?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      data = JSON.parse(await data.text());
+    } catch {
+      data = null;
+    }
+  }
+  return data?.error || fallback;
+}
+
 function MultiStepForm() {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(null); // null while checking whether we're logged in
+  const [resumeStep, setResumeStep] = useState(1);
   const [personalInfo, setPersonalInfo] = useState({});
-  const [receipts, setReceipts] = useState([
-    { date: '', purpose: '', costCenter: '', customCostCenter: '', comment: '', totalCost: '', file: [] }
-  ]);
+  const [receipts, setReceipts] = useState([emptyReceipt()]);
   const [paymentInfo, setPaymentInfo] = useState({});
   const [, , removeCookie] = useCookies(['personalInfo', 'receipts', 'paymentInfo']);
 
+  // Skip the password step if the login cookie is still valid
+  useEffect(() => {
+    api
+      .get('/api/session')
+      .then((res) => setStep(res.data.authenticated ? 1 : 0))
+      .catch(() => setStep(0));
+  }, []);
+
   const handlePasswordSuccess = () => {
-    setStep(1);
+    setStep(resumeStep);
   };
 
   const handlePersonalInfoNext = (data) => {
@@ -36,76 +71,59 @@ function MultiStepForm() {
     setStep(4);
   };
 
-  // Unified Finalize Handler
+  // Unified handler for preview and sending
   const handleFinalize = async (action) => {
+    const formData = new FormData();
+
+    // Tell the server how many files belong to each receipt (without changing state)
+    const receiptsToSend = receipts.map(({ files, ...rest }) => ({
+      ...rest,
+      filesCount: files ? files.length : 0,
+    }));
+
+    formData.append('personalInfo', JSON.stringify(personalInfo));
+    formData.append('paymentInfo', JSON.stringify(paymentInfo));
+    formData.append('receipts', JSON.stringify(receiptsToSend));
+    formData.append('action', action);
+    receipts.forEach((r) => {
+      (r.files || []).forEach((file) => formData.append('files', file));
+    });
+
     try {
-      // Create FormData
-      const formData = new FormData();
-
-    // 1. Augment receipts with filesCount
-    receipts.forEach(r => {
-      r.filesCount = r.files ? r.files.length : 0;
-    });
-      // Append personalInfo
-      formData.append('personalInfo', JSON.stringify(personalInfo));
-      formData.append('paymentInfo', JSON.stringify(paymentInfo));
-      formData.append('receipts', JSON.stringify(receipts));
-      formData.append('action', action);
-
-
-    // 3. Append all files from all receipts
-    receipts.forEach(r => {
-      (r.files || []).forEach(file => {
-        formData.append('files', file);
-      });
-    });
-
-      // Log FormData entries for debugging
-      for (let pair of formData.entries()) {
-        if (pair[1] instanceof File) {
-          console.log(`${pair[0]}: [File] ${pair[1].name}`);
-        } else {
-          console.log(`${pair[0]}: ${pair[1]}`);
-        }
-      }
-
       if (action === 'preview') {
-        const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          withCredentials: true,
+        // The server returns the PDF itself; show it from memory
+        const response = await api.post('/api/receipts/process', formData, {
+          responseType: 'blob',
         });
-
-        const { pdfUrl } = response.data;
-        const fullPdfUrl = `${process.env.REACT_APP_API_URL}${pdfUrl}`;
-        return fullPdfUrl; // Return the full URL to FinalizeForm.js
-      } else if (action === 'finalize') {
-        const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/receipts/process`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          withCredentials: true,
-        });
-
-        return response.data.message; // Return the success message
+        return URL.createObjectURL(response.data);
       }
+      const response = await api.post('/api/receipts/process', formData);
+      return response.data.message;
     } catch (error) {
-      console.error(`Error during ${action}:`, error);
-      throw error;
+      const loggedOut = error?.response?.status === 401;
+      if (loggedOut) {
+        // Keep everything filled in and come back here after logging in again
+        alert('Du har blivit utloggad. Logga in igen så kan du fortsätta där du var.');
+        setResumeStep(4);
+        setStep(0);
+      }
+      const err = new Error(await getErrorMessage(error, 'Ett fel uppstod. Försök igen.'));
+      err.handled = loggedOut;
+      throw err;
     }
   };
 
   const handleBack = () => {
-    setStep((prevStep) => prevStep - 1);
+    setStep((prevStep) => Math.max(1, prevStep - 1));
   };
 
   const handleReset = () => {
-    setStep(0); // Reset to the first step (PasswordPrompt)
+    // Start a new submission; the login is still valid
+    setResumeStep(1);
+    setStep(1);
     setPersonalInfo({});
-    setReceipts([]);
+    setReceipts([emptyReceipt()]);
     setPaymentInfo({});
-    // Clear all cookies
     removeCookie('personalInfo', { path: '/' });
     removeCookie('receipts', { path: '/' });
     removeCookie('paymentInfo', { path: '/' });
@@ -117,7 +135,6 @@ function MultiStepForm() {
       {step === 1 && (
         <PersonalInfoForm
           onNext={handlePersonalInfoNext}
-          onBack={handleBack}
         />
       )}
       {step === 2 && (
@@ -138,7 +155,7 @@ function MultiStepForm() {
         <FinalizeForm
           onFinalize={handleFinalize}
           onBack={handleBack}
-          onReset={handleReset} // Pass handleReset to FinalizeForm
+          onReset={handleReset}
         />
       )}
     </div>
